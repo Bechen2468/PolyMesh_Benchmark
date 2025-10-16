@@ -10,9 +10,10 @@ int main() {
     std::string off_path = "./sphere.off";
     std::vector<Benchmark_Result> results;
 
-    for(int i = 2; i < 10; ++i) {
-        size_t complexity = std::pow(2, i);
-        std::cout << "Building Sphere with complexity "  << complexity << "." << std::endl;
+    for(int i = 1; i < 8; ++i) {
+        //size_t complexity = std::pow(2, i);
+        size_t complexity = 4 * i * i;
+        std::cout << "Building Sphere with complexity " << complexity << ", (=" << (complexity+1)*(complexity+1) << " Vertices)." << std::endl;
         my_utils::off::build_sphere_file(complexity, complexity, off_path);
 
         Benchmark_PolyMesh bm_poly(off_path, complexity);
@@ -21,6 +22,8 @@ int main() {
         std::cout << "Starting benchmark.barycenter with complexity "  << complexity << "." << std::endl;
         results.push_back(bm_poly.test_barycenter());
         results.push_back(bm_open.test_barycenter());
+
+        std::cout << "==============================================================" << std::endl;
     }
 
     storage.write_results(results);
