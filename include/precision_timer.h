@@ -7,8 +7,8 @@
 
 class Precision_Timer {
 private:
-    std::chrono::steady_clock::time_point _timestamp_start;
-    std::chrono::steady_clock::time_point _timestamp_stop;
+    std::chrono::high_resolution_clock::time_point _timestamp_start;
+    std::chrono::high_resolution_clock::time_point _timestamp_stop;
 
 public:
     Precision_Timer();

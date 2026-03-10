@@ -1,4 +1,4 @@
-#include "benchmark_result/benchmark_result_storage.h"
+#include "benchmark/result/benchmark_result_storage.h"
 
 
 Benchmark_Result_Storage::Benchmark_Result_Storage() {

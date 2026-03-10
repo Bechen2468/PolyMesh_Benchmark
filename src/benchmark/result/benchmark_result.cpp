@@ -1,4 +1,4 @@
-#include "benchmark_result/benchmark_result.h"
+#include "benchmark/result/benchmark_result.h"
 
 
 std::string Benchmark_Result::to_string() const{

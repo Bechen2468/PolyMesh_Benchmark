@@ -17,6 +17,6 @@ void Precision_Timer::stop() {
 
 
 long long Precision_Timer::result() {
-    return std::chrono::duration_cast<std::chrono::microseconds>(_timestamp_stop - _timestamp_start).count();
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(_timestamp_stop - _timestamp_start).count();
 }
 

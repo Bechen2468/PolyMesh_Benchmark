@@ -6,7 +6,7 @@
 #include <iostream>
 #include <fstream>
 // ----------------------------------------------------------------------------
-#include "benchmark_result/benchmark_result.h"
+#include "benchmark/result/benchmark_result.h"
 // ----------------------------------------------------------------------------
 
 
