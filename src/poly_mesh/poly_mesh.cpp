@@ -172,3 +172,73 @@ bool PolyMesh::edge_exists(size_t I, size_t J) const {
 }
 
 
+Eigen::Matrix<size_t, 2, Eigen::Dynamic> PolyMesh::edges() {
+    if(!_edges_build) _build_edges();
+
+    return _edges;
+}
+
+
+void PolyMesh::_build_edges() {
+    _edges.resize(2, n_edges());
+}
+
+
+
+// ----------------------------------------------------------------------------  
+// Iterators
+// ----------------------------------------------------------------------------  
+
+PolyMesh::VIter::VIter(const PolyMesh* Mesh, size_t Id):
+_mesh(Mesh),
+id(Id)
+{
+    _skip_deleted();
+}
+
+
+PolyMesh::VIter::~VIter() {
+    _mesh = nullptr;
+}
+
+
+inline PolyMesh::VIter& PolyMesh::VIter::operator++() {
+    ++id;
+    _skip_deleted();
+    return *this;
+}
+
+
+void PolyMesh::VIter::_skip_deleted() {
+    const size_t size = _mesh->n_vertices();
+    while(id < size && _mesh->vertex_deleted(id)) ++id;
+}
+
+
+
+
+
+PolyMesh::FIter::FIter(const PolyMesh* Mesh, size_t Id):
+_mesh(Mesh),
+id(Id)
+{
+    _skip_deleted();
+}
+
+
+PolyMesh::FIter::~FIter() {
+    _mesh = nullptr;
+}
+
+
+inline PolyMesh::FIter& PolyMesh::FIter::operator++() {
+    ++id;
+    _skip_deleted();
+    return *this;
+}
+
+
+void PolyMesh::FIter::_skip_deleted() {
+    const size_t size = _mesh->n_faces();
+    while(id < size && _mesh->face_deleted(id)) ++id;
+}

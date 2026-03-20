@@ -5,6 +5,7 @@
 Benchmark::Benchmark(const std::string& Mesh_Name, size_t Complexity):
 _mesh_name(Mesh_Name),
 _complexity(Complexity),
+_pre_mesh_mem_usage(my_utils::system::get_memory_usage()),
 _benchmark_sink(0.0)
 {}
 

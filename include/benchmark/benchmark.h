@@ -5,6 +5,7 @@
 #include <random>
 #include <algorithm>
 #include <vector>
+#include "my_utils.h"
 #include "precision_timer.h"
 #include "result/benchmark_result.h"
 // ----------------------------------------------------------------------------
@@ -14,6 +15,7 @@ class Benchmark {
 protected:
     const std::string _mesh_name;
     size_t _complexity;
+    size_t _pre_mesh_mem_usage;
 
     // used to force unreused loop execution
     volatile double _benchmark_sink;
@@ -85,7 +87,8 @@ Benchmark_Result Benchmark::_run(const std::string& name) {
         this->_mesh_name,
         name,
         this->_complexity,
-        timer.result()
+        timer.result(),
+        my_utils::system::get_memory_usage() - _pre_mesh_mem_usage
     };
 }
 
@@ -102,7 +105,8 @@ Benchmark_Result Benchmark::_run_random(const std::string& name, const std::vect
         this->_mesh_name,
         name,
         this->_complexity,
-        timer.result()
+        timer.result(),
+        my_utils::system::get_memory_usage() - _pre_mesh_mem_usage
     };
 }
 
