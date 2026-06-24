@@ -1,6 +1,0 @@
-#include "benchmark/result/benchmark_result.h"
-
-
-std::string Benchmark_Result::to_string() const{
-    return mesh_name + ',' + test_name + ',' + std::to_string(complexity_k) + ',' + std::to_string(duration) + ',' + std::to_string(memoryUsage_after);
-}
