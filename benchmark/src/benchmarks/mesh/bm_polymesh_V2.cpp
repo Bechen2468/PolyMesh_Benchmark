@@ -1,4 +1,4 @@
-#include "benchmarks/bm_polymesh_V2.h"
+#include "benchmarks/mesh/bm_polymesh_V2.h"
 
 
 
@@ -9,7 +9,7 @@ void Benchmark_PolyMesh_V02::_iterate_V_raw() {
     for (size_t i = 0; i < mesh.n_vertices(); ++i) {
         //const auto& v = mesh.vertex(i);
         auto v = mesh.vertex(i);
-        p[0] += v[0];       // DEVNOTE: Eigen::Vector.operator+=() is a templated call, so its sadly slow af ... 
+        p[0] += v[0];       // DEVNOTE: Eigen::Vector.operator+=() blocks simd vectorization, so its sadly slow af ... 
         p[1] += v[1];
         p[2] += v[2];
         //p += mesh.vertex(i);
@@ -137,7 +137,7 @@ void Benchmark_PolyMesh_V02::_adjacent_VV() {
     auto vend = mesh.vertices_end();
     
     for(auto vi = mesh.vertices_begin(); vi != vend; ++vi) {
-        for(auto vv = mesh.vv_begin(vi.rawId); vv; ++vv) {
+        for(auto vv = mesh.vv_begin(vi._rawId); vv; ++vv) {
             sink += *vv;
         }
     }
@@ -202,7 +202,7 @@ void Benchmark_PolyMesh_V02::_adjacent_EF() {
 void Benchmark_PolyMesh_V02::run_load_all(benchmark::State& state) {
     for (auto _ : state) {
         const std::string fileName = "./mesh_convex_" + std::to_string(state.range(0)) + ".off";
-        load_mesh(fileName, true);
+        load_mesh_storage(fileName, true);
     }
 }
 

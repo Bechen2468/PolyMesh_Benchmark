@@ -1,81 +1,178 @@
-#include "benchmarks/bm_polymesh_V1.h"
-#include "benchmarks/bm_polymesh_V2.h"
-#include "benchmarks/bm_openmesh.h"
-#include "benchmarks/bm_pmp.h"
+#include "benchmarks/mesh/bm_openmesh.h"
+#include "benchmarks/mesh/bm_pmp.h"
+#include "benchmarks/mesh/bm_polymesh_V1.h"
+#include "benchmarks/mesh/bm_polymesh_V2.h"
+#include "benchmarks/structs/matrix/ibenchmark_matrix.h"
+#include "benchmarks/mesh/bm_polymesh_V3.h"
 
 
 
 
-REGISTER(Benchmark_PolyMesh_V01, Load, run_load)
-REGISTER(Benchmark_PolyMesh_V02, Load, run_load)
-REGISTER(Benchmark_PolyMesh_V02, Load_All, run_load_all)
-REGISTER(Benchmark_OpenMesh_V11, Load, run_load)
-REGISTER(Benchmark_Pmp_Lib__V03, Load, run_load)
+/*  REMOVED TO GET TO NEW TESTS FASTER ( NOTHING WRONG HERE )
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Iterate, run_iterate)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Iterate, run_iterate)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Iterate_WorstCase, run_iterate_worst_case)
 
-REGISTER(Benchmark_PolyMesh_V01, Iterate_V_Raw, run_iterate_V_raw)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_V_Raw, run_iterate_V_raw)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Extend_InReserve, run_extend_InReserve)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Extend_InReserve, run_extend_InReserve)
 
-REGISTER(Benchmark_PolyMesh_V01, Iterate_V, run_iterate_V)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_V, run_iterate_V)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_V, run_iterate_V)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_V, run_iterate_V)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Extend_OverReserve, run_extend_OverReserve)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Extend_OverReserve, run_extend_OverReserve)
 
-REGISTER(Benchmark_PolyMesh_V01, Iterate_F_Raw, run_iterate_F_raw)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_F_Raw, run_iterate_F_raw)
-REGISTER(Benchmark_PolyMesh_V01, Iterate_F, run_iterate_F)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_F, run_iterate_F)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_F, run_iterate_F)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_F, run_iterate_F)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Remove_from_Row, run_remove_from_Row)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Remove_from_Row, run_remove_from_Row)
 
-REGISTER(Benchmark_PolyMesh_V01, Iterate_E, run_iterate_E)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_E, run_iterate_E)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_E_Loaded, run_iterate_loaded_E)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_E, run_iterate_E)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_E, run_iterate_E)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Delete_Rows, run_delete_rows)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Delete_Rows, run_delete_rows)
 
-REGISTER(Benchmark_PolyMesh_V01, Iterate_Random_V, run_iterate_random_V)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_Random_V, run_iterate_random_V)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_Random_V, run_iterate_random_V)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_Random_V, run_iterate_random_V)
-
-REGISTER(Benchmark_PolyMesh_V01, Iterate_Random_F, run_iterate_random_F)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_Random_F, run_iterate_random_F)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_Random_F, run_iterate_random_F)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_Random_F, run_iterate_random_F)
-
-REGISTER(Benchmark_PolyMesh_V01, Iterate_Random_E, run_iterate_random_E)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_Random_E, run_iterate_random_E)
-REGISTER(Benchmark_PolyMesh_V02, Iterate_Random_E_Loaded, run_iterate_loaded_random_E)
-REGISTER(Benchmark_OpenMesh_V11, Iterate_Random_E, run_iterate_random_E)
-REGISTER(Benchmark_Pmp_Lib__V03, Iterate_Random_E, run_iterate_random_E)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_Eigen_Sparse, Eigen__Add_Rows, run_add_rows)
+REGISTER_TEMPLATE(IBenchmark_Matrix, Adapter_D_Ragged_Matrix, D_CSR__Add_Rows, run_add_rows)
 
 
-// REGISTER(Benchmark_PolyMesh_V01, Adjacent_VV, run_adjacent_VV)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_VV, run_adjacent_VV)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_VV_Loaded, run_adjacent_loaded_VV)
-REGISTER(Benchmark_OpenMesh_V11, Adjacent_VV, run_adjacent_VV)
-REGISTER(Benchmark_Pmp_Lib__V03, Adjacent_VV, run_adjacent_VV)
 
 
-// REGISTER(Benchmark_PolyMesh_V01, Adjacent_VF, run_adjacent_VF)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_VF, run_adjacent_VF)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_VF_Loaded, run_adjacent_loaded_VF)
-REGISTER(Benchmark_OpenMesh_V11, Adjacent_VF, run_adjacent_VF)
-REGISTER(Benchmark_Pmp_Lib__V03, Adjacent_VF, run_adjacent_VF)
+
+BENCHMARK_DEFINE_F(Benchmark_D_CSR_Matrix, Verify)(benchmark::State& state) {
+    run_verification(state);                                             
+}                                                           
+BENCHMARK_REGISTER_F(Benchmark_D_CSR_Matrix, Verify)                  
+    ->DenseRange(0, 4, 1)
+    ->Unit(benchmark::kMicrosecond);
 
 
-// REGISTER(Benchmark_PolyMesh_V01, Adjacent_FV, run_adjacent_FV)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_FV, run_adjacent_FV)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_FV_Loaded, run_adjacent_loaded_FV)
-REGISTER(Benchmark_OpenMesh_V11, Adjacent_FV, run_adjacent_FV)
-REGISTER(Benchmark_Pmp_Lib__V03, Adjacent_FV, run_adjacent_FV)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Load, run_load)
+REGISTER_01(Benchmark_PolyMesh_V02, Load, run_load)
+//REGISTER_01(Benchmark_PolyMesh_V02, Load_All, run_load_all)
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Load, run_load)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Load, run_load)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Load, run_load)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_V_Raw, run_iterate_V_raw)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_V_Raw, run_iterate_V_raw)
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Iterate_V_Raw, run_iterate_V_raw)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_V, run_iterate_V)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_V, run_iterate_V)
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Iterate_V, run_iterate_V)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_V, run_iterate_V)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_V, run_iterate_V)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_F_Raw, run_iterate_F_raw)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_F_Raw, run_iterate_F_raw)
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Iterate_F_Raw, run_iterate_F_raw)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_F, run_iterate_F)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_F, run_iterate_F)
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Iterate_F, run_iterate_F)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_F, run_iterate_F)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_F, run_iterate_F)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_E, run_iterate_E)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_E, run_iterate_E)
+//REGISTER_01(Benchmark_PolyMesh_V02, Iterate_E_Loaded, run_iterate_loaded_E)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_E, run_iterate_E)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_E, run_iterate_E)
+
+*/
+
+/*
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_Random_V, run_iterate_random_V)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_Random_V, run_iterate_random_V)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_Random_V, run_iterate_random_V)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_Random_V, run_iterate_random_V)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_Random_F, run_iterate_random_F)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_Random_F, run_iterate_random_F)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_Random_F, run_iterate_random_F)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_Random_F, run_iterate_random_F)
+
+REGISTER_01(Benchmark_PolyMesh_V01, Iterate_Random_E, run_iterate_random_E)
+REGISTER_01(Benchmark_PolyMesh_V02, Iterate_Random_E, run_iterate_random_E)
+//REGISTER_01(Benchmark_PolyMesh_V02, Iterate_Random_E_Loaded, run_iterate_loaded_random_E)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Iterate_Random_E, run_iterate_random_E)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Iterate_Random_E, run_iterate_random_E)
+*/
 
 
-// REGISTER(Benchmark_PolyMesh_V01, Adjacent_EF, run_adjacent_EF)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_EF, run_adjacent_EF)
-REGISTER(Benchmark_PolyMesh_V02, Adjacent_EF_Loaded, run_adjacent_loaded_EF)
-REGISTER(Benchmark_OpenMesh_V11, Adjacent_EF, run_adjacent_EF)
-REGISTER(Benchmark_Pmp_Lib__V03, Adjacent_EF, run_adjacent_EF)
+/*
+
+REGISTER_01(Benchmark_PolyMesh_V01, Adjacent_VV, run_adjacent_VV)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_VV, run_adjacent_VV)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_VV_Loaded, run_adjacent_loaded_VV)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Adjacent_VV, run_adjacent_VV)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Adjacent_VV, run_adjacent_VV)
+
+
+REGISTER_01(Benchmark_PolyMesh_V01, Adjacent_VF, run_adjacent_VF)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_VF, run_adjacent_VF)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_VF_Loaded, run_adjacent_loaded_VF)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Adjacent_VF, run_adjacent_VF)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Adjacent_VF, run_adjacent_VF)
+
+
+REGISTER_01(Benchmark_PolyMesh_V01, Adjacent_FV, run_adjacent_FV)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_FV, run_adjacent_FV)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_FV_Loaded, run_adjacent_loaded_FV)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Adjacent_FV, run_adjacent_FV)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Adjacent_FV, run_adjacent_FV)
+
+
+REGISTER_01(Benchmark_PolyMesh_V01, Adjacent_EF, run_adjacent_EF)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_EF, run_adjacent_EF)
+REGISTER_01(Benchmark_PolyMesh_V02, Adjacent_EF_Loaded, run_adjacent_loaded_EF)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Adjacent_EF, run_adjacent_EF)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Adjacent_EF, run_adjacent_EF)
+*/
+
+
+
+/*
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Tri__to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Tri__to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Tri__to_TriMesh, run_convert_to_trimesh)
+
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Quad_to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Quad_to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Quad_to_TriMesh, run_convert_to_trimesh)
+
+REGISTER_01(Polymesh_V03, Benchmark_PolyMesh_V03, Dual_to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(OpenMesh_V11, Benchmark_OpenMesh_V11, Dual_to_TriMesh, run_convert_to_trimesh)
+REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Dual_to_TriMesh, run_convert_to_trimesh)
+*/
+
+
+
+
+REGISTER_01("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, Load, run_load)
+REGISTER_01("SurfaceMesh_/V03/Load", Benchmark_Pmp_Lib__V03, Load, run_load)
+REGISTER_0_1("Polymesh____/V03/Load", Benchmark_PolyMesh_V03, Load, run_load)
+
+REGISTER_01("OpenMesh____/V11/Circular", Benchmark_OpenMesh_V11, Circular, run_circular)
+REGISTER_01("SurfaceMesh_/V03/Circular", Benchmark_Pmp_Lib__V03, Circular, run_circular)
+REGISTER_0_1("Polymesh____/V03/Circular", Benchmark_PolyMesh_V03, Circular, run_circular)
+
+REGISTER_01("OpenMesh____/V11/Barycenter", Benchmark_OpenMesh_V11, Barycenter, run_barycenter)
+REGISTER_01("SurfaceMesh_/V03/Barycenter", Benchmark_Pmp_Lib__V03, Barycenter, run_barycenter)
+REGISTER_0_1("Polymesh____/V03/Barycenter", Benchmark_PolyMesh_V03, Barycenter, run_barycenter)
+
+
+REGISTER_01("OpenMesh____/V11/Normal", Benchmark_OpenMesh_V11, Normal, run_normal)
+REGISTER_01("SurfaceMesh_/V03/Normal", Benchmark_Pmp_Lib__V03, Normal, run_normal)
+REGISTER_0_1("Polymesh____/V03/Normal", Benchmark_PolyMesh_V03, Normal, run_normal)
+
+REGISTER_01("OpenMesh____/V11/Smoothing", Benchmark_OpenMesh_V11, Smoothing, run_smoothing)
+REGISTER_01("SurfaceMesh_/V03/Smoothing", Benchmark_Pmp_Lib__V03, Smoothing, run_smoothing)
+REGISTER_0_1("Polymesh____/V03/Smoothing", Benchmark_PolyMesh_V03, Smoothing, run_smoothing)
+
+REGISTER_01("OpenMesh____/V11/Subdivision", Benchmark_OpenMesh_V11, Subdivision, run_subdivision)
+REGISTER_01("SurfaceMesh_/V03/Subdivision", Benchmark_Pmp_Lib__V03, Subdivision, run_subdivision)
+REGISTER_0_1("Polymesh____/V03/Subdivision", Benchmark_PolyMesh_V03, Subdivision, run_subdivision)
+
+
+REGISTER_01("OpenMesh____/V11/Collapse", Benchmark_OpenMesh_V11, Collapse, run_collapse)
+REGISTER_01("SurfaceMesh_/V03/Collapse", Benchmark_Pmp_Lib__V03, Collapse, run_collapse)
+REGISTER_0_1("Polymesh____/V03/Collapse", Benchmark_PolyMesh_V03, Collapse, run_collapse)
 
 
 

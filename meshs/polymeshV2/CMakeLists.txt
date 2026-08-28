@@ -21,19 +21,22 @@ endif()
 find_package(Eigen3 3.4.0 REQUIRED)
 
 
-file(GLOB_RECURSE my_sources
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-)
+#file(GLOB_RECURSE my_sources
+#    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+#)
+#
+#add_library(${PROJECT_NAME} STATIC ${my_sources})
 
-add_library(PolyMeshV2 STATIC ${my_sources})
+
+add_library(${PROJECT_NAME} INTERFACE)
 add_library(PolyMesh::V2 ALIAS ${PROJECT_NAME})
 
-target_include_directories(PolyMeshV2
-    PUBLIC
+target_include_directories(${PROJECT_NAME}
+    INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(PolyMeshV2 PUBLIC Eigen3::Eigen)
-target_compile_features(PolyMeshV2 PUBLIC cxx_std_20)
+target_link_libraries(${PROJECT_NAME} INTERFACE Eigen3::Eigen)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 

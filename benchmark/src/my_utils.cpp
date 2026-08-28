@@ -69,82 +69,148 @@ namespace my_utils {
             std::mt19937 rng(Seed);
             std::normal_distribution<double> dist(0.0, 1.0);
 
-            // uniform random points on unit sphere
             std::vector<quickhull::Vector3<double>> qh_points;
-            std::vector<std::array<double,3>> vertices;
             qh_points.reserve(Point_Count);
-            vertices.reserve(Point_Count);
 
             for(size_t i = 0; i < Point_Count; i++) {
                 double x = dist(rng), y = dist(rng), z = dist(rng);
                 double len = std::sqrt(x*x + y*y + z*z);
-                x /= len; y /= len; z /= len;
-                qh_points.push_back({x, y, z});
-                vertices.push_back({x, y, z});
+                qh_points.push_back({x / len, y / len, z / len});
             }
 
-            // convex hull on sphere = delaunay triangulation
             quickhull::QuickHull<double> qh;
-            auto hull = qh.getConvexHull(qh_points, true, false);
-            auto& indices = hull.getIndexBuffer();
+            // Keep 'false' here to generate a compacted vertex buffer
+            auto hull = qh.getConvexHull(qh_points, true, false); 
+            
+            // Get both the optimized vertices and their index buffer
+            const auto& vertices = hull.getVertexBuffer(); // <--- Get the actual hull vertices
+            const auto& indices = hull.getIndexBuffer();
 
-            // write OFF
             std::ofstream out(File_Path);
+            if (!out) return;
+
             out << "OFF\n";
             out << vertices.size() << " " << (indices.size() / 3) << " 0\n";
-            for(auto& v : vertices)
-                out << v[0] << " " << v[1] << " " << v[2] << "\n";
-            for(size_t i = 0; i < indices.size(); i += 3)
+            
+            // Write the actual vertices returned by QuickHull
+            for(auto& v : vertices) {
+                out << v.x << " " << v.y << " " << v.z << "\n";
+            }
+            
+            // Write the triangles
+            for(size_t i = 0; i < indices.size(); i += 3) {
                 out << "3 " << indices[i] << " " << indices[i+1] << " " << indices[i+2] << "\n";
+            }
             out.close();
         }
+
+
+
+        void build_quad_off(size_t Point_Count, const std::string& File_Path) {
+            pmp::SurfaceMesh mesh = pmp::torus(std::sqrt(Point_Count), std::sqrt(Point_Count), 2.0, 0.5);
+            pmp::write(mesh, File_Path);
+        }
+
+
+        void build_dual_off(size_t Point_Count, const std::string& File_Path, unsigned int Seed) {
+            std::mt19937 rng(Seed);
+            std::normal_distribution<double> dist(0.0, 1.0);
+            size_t Point_Count_Half = Point_Count / 2;
+
+            std::vector<quickhull::Vector3<double>> qh_points;
+            qh_points.reserve(Point_Count_Half);
+
+            for(size_t i = 0; i < Point_Count_Half; i++) {
+                double x = dist(rng), y = dist(rng), z = dist(rng);
+                double len = std::sqrt(x*x + y*y + z*z);
+                qh_points.push_back({x / len, y / len, z / len});
+            }
+
+            quickhull::QuickHull<double> qh;
+            auto hull = qh.getConvexHull(qh_points, true, false); 
+            
+            const auto& qh_vertices = hull.getVertexBuffer(); 
+            const auto& qh_indices = hull.getIndexBuffer();
+
+            // 2. Load QuickHull output directly into a PMP Triangle Mesh
+            pmp::SurfaceMesh tri_mesh;
+            std::vector<pmp::Vertex> pmp_verts;
+            pmp_verts.reserve(qh_vertices.size());
+
+            for (const auto& v : qh_vertices) {
+                pmp_verts.push_back(tri_mesh.add_vertex(pmp::Point(v.x, v.y, v.z)));
+            }
+
+            for (size_t i = 0; i < qh_indices.size(); i += 3) {
+                tri_mesh.add_face({
+                    pmp_verts[qh_indices[i]],
+                    pmp_verts[qh_indices[i+1]],
+                    pmp_verts[qh_indices[i+2]]
+                });
+            }
+
+            // 3. Generate the Dual Polymesh
+            pmp::SurfaceMesh dual_mesh;
+            auto dual_vertices = tri_mesh.add_face_property<pmp::Vertex>("f:dual_vertex");
+            
+            // Convert faces to vertices
+            for (auto f : tri_mesh.faces()) {
+                pmp::Point centroid(0, 0, 0);
+                int count = 0;
+                for (auto v : tri_mesh.vertices(f)) {
+                    centroid += tri_mesh.position(v);
+                    count++;
+                }
+                centroid /= static_cast<float>(count);
+                dual_vertices[f] = dual_mesh.add_vertex(centroid);
+            }
+
+            // Convert vertices to multi-sided faces
+            for (auto v : tri_mesh.vertices()) {
+                if (tri_mesh.is_boundary(v)) continue;
+
+                std::vector<pmp::Vertex> face_vertices;
+                for (auto f : tri_mesh.faces(v)) {
+                    face_vertices.push_back(dual_vertices[f]);
+                }
+                
+                // This creates clean n-gons mapping perfectly to the vertex valencies!
+                dual_mesh.add_face(face_vertices);
+            }
+
+            pmp::write(dual_mesh, File_Path);
+        }
+
     };
 
 
     namespace system {
-        size_t get_memory_usage() {
-#if defined(_WIN32)
-            PROCESS_MEMORY_COUNTERS info;
-            GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info));
-            return static_cast<size_t>(info.WorkingSetSize) / 1024;
-#elif defined(__linux__)
-
-            // TEMP TEST
-            std::ifstream file("/proc/self/status");
+        size_t get_current_memory_kb() {
+            std::ifstream status("/proc/self/status");
             std::string line;
-            while (std::getline(file, line)) {
-                if (line.substr(0, 6) == "VmRSS:") {
-                    // Extract digits
-                    size_t pos = line.find_first_of("0123456789");
-                    if (pos != std::string::npos) {
-                        return std::stoul(line.substr(pos));
-                    }
+            while(std::getline(status, line)) {
+                if(line.rfind("VmRSS:", 0) == 0) {
+                    size_t kb = 0;
+                    sscanf(line.c_str(), "VmRSS: %zu kB", &kb);
+                    return kb;
                 }
             }
             return 0;
-            // TEMP TEST
+        }
 
-            std::ifstream statm("/proc/self/statm");
-            size_t size, resident;
-            statm >> size >> resident;
-            return resident * sysconf(_SC_PAGESIZE) / 1024;
-#endif
+
+        size_t get_peak_memory_kb() {
+            std::ifstream status("/proc/self/status");
+            std::string line;
+            while(std::getline(status, line)) {
+                if(line.rfind("VmHWM:", 0) == 0) {
+                    size_t kb = 0;
+                    sscanf(line.c_str(), "VmHWM: %zu kB", &kb);
+                    return kb;
+                }
+            }
             return 0;
         }
-    
-    
-        size_t get_resident_memory_kb() {
-        std::ifstream status("/proc/self/status");
-        std::string line;
-        while(std::getline(status, line)) {
-            if(line.rfind("VmRSS:", 0) == 0) {
-                size_t kb = 0;
-                sscanf(line.c_str(), "VmRSS: %zu kB", &kb);
-                return kb;
-            }
-        }
-        return 0;
-    }
 
     };
 

@@ -4,23 +4,24 @@
 //#define POLYMESH_INDEX_64     // 64 bit indexing
 //#define POLYMESH_INDEX_SIZET     // dyn 32/64 bit indexing
 // ----------------------------------------------------------------------------
+#include <cstdint>
 #include <string>
 #include <PolyMesh/V2.h>
-#include "benchmarks/ibenchmark.h"
+#include "benchmarks/mesh/ibenchmark.h"
 // ----------------------------------------------------------------------------
 
 
 
 class Benchmark_PolyMesh_V02 : public IBenchmark {
 protected:
-    using Mesh = PolyMesh::V2::PolyMesh<double>;
+    using Mesh = PolyMesh::V2::PolyMesh<double, std::uint32_t>;
     Mesh mesh;
 
 protected:
-    std::vector<size_t> load_mesh(const std::string& FileName, bool fully_loaded) override {
+    std::vector<size_t> load_mesh_storage(const std::string& FileName, int full = 0) override {
         mesh.read_file(FileName);
         size_t n_edges = mesh.n_edges();
-        if(fully_loaded) {
+        if(full) {
             mesh.edges();
             mesh.VV();
             mesh.VF();
@@ -34,6 +35,8 @@ protected:
         return {mesh.n_vertices(), mesh.n_faces(), n_edges};
     }
 
+    void load_mesh_from_storage(int load_full) override {}
+    
     void destroy_mesh() override {
         mesh = Mesh();
     }
@@ -64,6 +67,8 @@ protected:
     void run_adjacent_loaded_VF(benchmark::State& state);
     void run_adjacent_loaded_FV(benchmark::State& state);
     void run_adjacent_loaded_EF(benchmark::State& state);
+
+    void _convert_to_trimesh() override {}
 };
 
 

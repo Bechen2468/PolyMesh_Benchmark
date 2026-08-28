@@ -1,3 +1,9 @@
+clear ; cmake .. -DCMAKE_BUILD_TYPE=Release ; cmake --build . --config Release ; sudo cpupower frequency-set --governor performance ; ./benchmark/PolyMesh_Benchmark ; sudo cpupower frequency-set --governor powersave
+
+
+
+
+
 
 # Thesis structure:
 ## Name: Evaluation of a polygon mesh data structure using sparse matrices
@@ -35,24 +41,6 @@ Kann eine Polygonnetzdatenstruktur durch bedarfsgesteuerte Relationsstrukturen s
 - Wann ist PolyMesh die bessere Wahl?
 
 
-# Treffen:
-- pmp mesh vom paper
-- matrixVV schmutz neu
-- poly faces:
-  vec ids
-  face start + len
-  ids:    f0, f0, f0, f0, f1, f1, f1, f2, f2, f2, f2, f2, ...
-  start:  0, 4, 7, ...
-  len;    4, 3, 5, ...
-#### DONE
-- Benchmark namespace instead of Benchmark_...
-- libigl mesh
-- anfangen notizen zu den kapiteln
-- devnotes: bsp eigen vector operationen nur intern SIMD p += p2 
-  - warum im energiesparmodus langsamer als openmesh
-  - eigen5 vs eigen3
-  - argumenitieren um entscheidungen 
-
 
 
 # Notes 24.06:
@@ -74,95 +62,22 @@ Kann eine Polygonnetzdatenstruktur durch bedarfsgesteuerte Relationsstrukturen s
 
 
 
-# Memory Tests 23.06:
-For V = 1.000.000 and F = 2.000.000:
+
+# TODO
+## HERE
+1. Atomic primitives (add/delete vertex, add/delete face, edge_flip)
+2. V3 as separate class, coarse V2 stays untouched for comparison
+3. RSM (CSR+slack) AND vec-of-vec, same interface, both implemented
+4. Invalidation/touch table per primitive (write this down before coding)
+5. Lazy queue, replay-on-access, per-matrix scope
+6. Benchmark: RSM vs vec-of-vec vs Eigen-sparse (build/memory/query)
+7. Benchmark: single-primitive cost, V2 vs V3 vs OpenMesh
+8. Later: real-algorithm benchmarks (smoothing, decimation, etc.) — not now
 
 
 
-# Benchmark<float> 23.06:
---------------------------------------------------------------------
-Benchmark                                                       Time
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Load/1000000                    2553227536 ns
-Benchmark_PolyMesh_V02/Load/1000000                    3644656706 ns
-Benchmark_PolyMesh_V02/Load_All/1000000                1.2345e+10 ns
-Benchmark_OpenMesh_V11/Load/1000000                    3466404913 ns
-Benchmark_Pmp_Lib__V03/Load/1000000                    3793239635 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_V_Raw/1000000             16343018 ns
-Benchmark_PolyMesh_V02/Iterate_V_Raw/1000000             10754678 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_V/1000000                 18287190 ns
-Benchmark_PolyMesh_V02/Iterate_V/1000000                 13484312 ns
-Benchmark_OpenMesh_V11/Iterate_V/1000000                 11047203 ns
-Benchmark_Pmp_Lib__V03/Iterate_V/1000000                 11493068 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_F_Raw/1000000             20668537 ns
-Benchmark_PolyMesh_V02/Iterate_F_Raw/1000000             11355000 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_F/1000000                 22259501 ns
-Benchmark_PolyMesh_V02/Iterate_F/1000000                 31010295 ns
-Benchmark_OpenMesh_V11/Iterate_F/1000000                147044253 ns
-Benchmark_Pmp_Lib__V03/Iterate_F/1000000                118919005 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_E/1000000                 53846925 ns
-Benchmark_PolyMesh_V02/Iterate_E/1000000                  8551252 ns
-Benchmark_PolyMesh_V02/Iterate_E_Loaded/1000000           5893297 ns
-Benchmark_OpenMesh_V11/Iterate_E/1000000                127507860 ns
-Benchmark_Pmp_Lib__V03/Iterate_E/1000000                 60749014 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_Random_V/1000000          39928895 ns
-Benchmark_PolyMesh_V02/Iterate_Random_V/1000000          28659949 ns
-Benchmark_OpenMesh_V11/Iterate_Random_V/1000000          29933920 ns
-Benchmark_Pmp_Lib__V03/Iterate_Random_V/1000000          27356707 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_Random_F/1000000          68821617 ns
-Benchmark_PolyMesh_V02/Iterate_Random_F/1000000          55661722 ns
-Benchmark_OpenMesh_V11/Iterate_Random_F/1000000         452173010 ns
-Benchmark_Pmp_Lib__V03/Iterate_Random_F/1000000         400398816 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V01/Iterate_Random_E/1000000         201199198 ns
-Benchmark_PolyMesh_V02/Iterate_Random_E/1000000          75768097 ns
-Benchmark_PolyMesh_V02/Iterate_Random_E_Loaded/1000000   75711793 ns
-Benchmark_OpenMesh_V11/Iterate_Random_E/1000000         346227028 ns
-Benchmark_Pmp_Lib__V03/Iterate_Random_E/1000000         145766698 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V02/Adjacent_VV/1000000             3049507620 ns
-Benchmark_PolyMesh_V02/Adjacent_VV_Loaded/1000000        65239860 ns
-Benchmark_OpenMesh_V11/Adjacent_VV/1000000              148016184 ns
-Benchmark_Pmp_Lib__V03/Adjacent_VV/1000000              108776988 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V02/Adjacent_VF/1000000             2483529583 ns
-Benchmark_PolyMesh_V02/Adjacent_VF_Loaded/1000000        68115750 ns
-Benchmark_OpenMesh_V11/Adjacent_VF/1000000              191737213 ns
-Benchmark_Pmp_Lib__V03/Adjacent_VF/1000000              125765012 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V02/Adjacent_FV/1000000               82409453 ns
-Benchmark_PolyMesh_V02/Adjacent_FV_Loaded/1000000        79156974 ns
-Benchmark_OpenMesh_V11/Adjacent_FV/1000000              147412701 ns
-Benchmark_Pmp_Lib__V03/Adjacent_FV/1000000              116572487 ns
---------------------------------------------------------------------
-Benchmark_PolyMesh_V02/Adjacent_EF/1000000             4530501397 ns
-Benchmark_PolyMesh_V02/Adjacent_EF_Loaded/1000000       156681509 ns
-Benchmark_OpenMesh_V11/Adjacent_EF/1000000              188720136 ns
-Benchmark_Pmp_Lib__V03/Adjacent_EF/1000000               64712024 ns
-
-
-
-# Benchmark<double> 23.06:
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Termin Mittwoch 14:
+ab übernächste woche!
 
 # Notes:
 ## AoS vs SoA Vertices

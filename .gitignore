@@ -1,4 +1,6 @@
 .vs/
 .vscode/
 build/
+build_Release/
 /.build
+/.build_Release

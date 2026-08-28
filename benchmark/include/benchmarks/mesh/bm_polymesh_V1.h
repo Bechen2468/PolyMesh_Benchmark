@@ -3,7 +3,7 @@
 // ----------------------------------------------------------------------------
 #include <string>
 #include <PolyMesh/V1.h>
-#include "benchmarks/ibenchmark.h"
+#include "benchmarks/mesh/ibenchmark.h"
 // ----------------------------------------------------------------------------
 
 
@@ -14,11 +14,13 @@ protected:
     Mesh mesh;
 
 protected:
-    std::vector<size_t> load_mesh(const std::string& FileName, bool fully_loaded) override {
+    std::vector<size_t> load_mesh_storage(const std::string& FileName, int full = 0) override {
         mesh.read_file(FileName);
         return {mesh.n_vertices(), mesh.n_faces(), mesh.n_edges()};
     }
 
+    void load_mesh_from_storage(int load_full) override {}
+    
     void destroy_mesh() override {
         mesh = Mesh();
     }
@@ -40,6 +42,7 @@ protected:
     void _adjacent_FV() override {}
     void _adjacent_EF() override {}
     
+    void _convert_to_trimesh() override {}
 };
 
 

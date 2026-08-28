@@ -30,19 +30,18 @@ add_library(PolyMeshV1 STATIC ${my_sources})
 add_library(PolyMesh::V1 ALIAS ${PROJECT_NAME})
 
 # Optimizations
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(PolyMeshV1 PRIVATE
-        -O3
-        -march=native
-    )
-elseif(MSVC)
-    target_compile_options(PolyMeshV1 PRIVATE
-        /O2
-    )
-endif()
+#if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+#    target_compile_options(PolyMeshV1 PRIVATE
+#        -O3
+#        -march=native
+#    )
+#elseif(MSVC)
+#    target_compile_options(PolyMeshV1 PRIVATE
+#        /O2
+#    )
+#endif()
 
 
-set_property(TARGET PolyMeshV1 PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 
 target_include_directories(PolyMeshV1
