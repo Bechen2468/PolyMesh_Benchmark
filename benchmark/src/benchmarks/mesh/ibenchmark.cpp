@@ -30,11 +30,13 @@ void IBenchmark::run_load(benchmark::State& state) {
         mem.measure_pre_run();
         state.ResumeTiming();
 
-        load_mesh_storage(file_path, state.range(1) != 0);
+        load_mesh_storage(file_path, state.range(1));
         //load_mesh_from_storage(state.range(1));
 
         state.PauseTiming();
         mem.measure_post_run();
+        //std::cout << "Loading finished.." << std::endl;
+        //getchar();
         state.ResumeTiming();
     }
 }
@@ -365,6 +367,27 @@ void  IBenchmark::run_collapse(benchmark::State& state) {
         state.PauseTiming();
         mem.measure_post_run();
         benchmark::DoNotOptimize(_benchmark_sink);
+        state.ResumeTiming();
+    }
+}
+
+
+void  IBenchmark::run_render_export(benchmark::State& state) {
+    std::vector<float> out_positions;
+    std::vector<int> out_indices;
+
+    for (auto _ : state) {
+        state.PauseTiming();
+        load_mesh_from_storage(state.range(1));
+        mem.measure_pre_run();
+        state.ResumeTiming();
+
+        _render_export(out_positions, out_indices);
+
+        state.PauseTiming();
+        mem.measure_post_run();
+        benchmark::DoNotOptimize(out_positions);
+        benchmark::DoNotOptimize(out_indices);
         state.ResumeTiming();
     }
 }

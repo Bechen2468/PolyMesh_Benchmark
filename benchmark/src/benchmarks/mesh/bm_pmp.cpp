@@ -394,3 +394,21 @@ void Benchmark_Pmp_Lib__V03::_collapse() {
 }
 
 
+
+
+void Benchmark_Pmp_Lib__V03::_render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) {
+    out_positions.resize(mesh.n_vertices() * 3);
+    for (auto v : mesh.vertices()) {
+        auto p = mesh.position(v);
+        out_positions[v.idx()*3+0] = p[0];
+        out_positions[v.idx()*3+1] = p[1];
+        out_positions[v.idx()*3+2] = p[2];
+    }
+
+    out_indices.clear();
+    for (auto f : mesh.faces()) {
+        for (auto v : mesh.vertices(f)) {   // PMP's face-vertex circulator, range-for compatible
+            out_indices.push_back(v.idx());
+        }
+    }
+}

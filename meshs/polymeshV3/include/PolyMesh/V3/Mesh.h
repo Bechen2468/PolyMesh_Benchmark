@@ -26,8 +26,8 @@ class PolyMesh {
 public:
     using T = typename TraitsT::template Rebind<PolyMesh>;  // Binding Friend access
 
-    template<typename T>
-    using Vec = std::vector<T, Aligned_Allocator<T, 64>>;
+    template<typename VecDataT>
+    using Vec = std::vector<VecDataT, Aligned_Allocator<VecDataT, 64>>;
 
 
     // unpacking base/atomic types for convinience
@@ -71,6 +71,9 @@ public:
 // Modifiers
 // ----------------------------------------------------------------------------  
 public:
+    void compact(bool Index_Compaction, bool With_Reserve = false);
+
+    
     // std::span<const Scalar, 3>, std::array, std::vector, raw arrays
     Index add_vertex(std::span<const Scalar, 3> Vert);
 

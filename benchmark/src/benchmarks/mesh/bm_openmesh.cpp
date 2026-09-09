@@ -342,6 +342,8 @@ void Benchmark_OpenMesh_V11::_subdivision() {
             mesh.flip(eit);
 
     mesh.garbage_collection();
+
+    //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
 
 
@@ -378,3 +380,16 @@ void Benchmark_OpenMesh_V11::_collapse() {
 }
 
 
+
+
+void  Benchmark_OpenMesh_V11::_render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) {
+    out_positions.resize(mesh.n_vertices() * 3);
+    for (auto vh : mesh.vertices()) {
+        auto p = mesh.point(vh);
+        out_positions[vh.idx()*3+0] = p[0]; out_positions[vh.idx()*3+1] = p[1]; out_positions[vh.idx()*3+2] = p[2];
+    }
+    out_indices.clear();
+    for (auto fh : mesh.faces())
+        for (auto fv_it = mesh.fv_iter(fh); fv_it.is_valid(); ++fv_it)
+            out_indices.push_back(fv_it->idx());
+}

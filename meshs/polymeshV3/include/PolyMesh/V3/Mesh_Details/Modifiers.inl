@@ -7,6 +7,21 @@
 namespace PolyMesh::V3 {
 
 PM_T
+void PM::compact(bool Index_Compaction, bool With_Reserve) { 
+    if(Index_Compaction) {
+        // TODO
+        return;
+    }
+
+    _f.compact({}, With_Reserve);
+    if(_relations.is_valid(CacheFlag::VV_HE)) _relations.VV_HE.compact({}, With_Reserve);
+    if(_relations.is_valid(CacheFlag::VF)) _relations.VF.compact({}, With_Reserve);
+    if(_relations.is_valid(CacheFlag::EF)) _relations.EF.compact({}, With_Reserve);
+}
+
+
+
+PM_T
 PM::Index PM::add_vertex(std::span<const Scalar, 3> Vert) { 
     Index idx = _v.add(Vert);
 

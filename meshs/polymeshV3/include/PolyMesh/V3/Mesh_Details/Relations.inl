@@ -9,6 +9,8 @@
 
 namespace PolyMesh::V3 {
 
+#define _COMPACT_RESERVE false
+
 
 PM_T
 void PM::set_validate_modifications(bool flag) {
@@ -99,6 +101,8 @@ void PM::_EF_build() {
     for(auto f : _f) {
         _EF_add_face(f, f.idx());
     }
+
+    ef.compact({}, _COMPACT_RESERVE);
 }
 
 
@@ -137,7 +141,7 @@ void PM::_EF_add_face(std::span<const Index> face, Index face_idx) {
 
         
         if(swapped) row[edge_slot].f_right = face_idx;
-        else        row[edge_slot].f_left  = face_idx;
+        else row[edge_slot].f_left  = face_idx;
     }
 }
 
@@ -193,6 +197,8 @@ void PM::_VV_HE_build() {
     for(auto f : _f) {
         _VV_HE_add_face(f, f.idx());
     }
+
+    vv_he.compact({}, _COMPACT_RESERVE);
 }
 
 
@@ -266,6 +272,8 @@ void PM::_VF_build() {
     for(auto f : _f) {
         _VF_add_face(f, f.idx());
     }
+
+    vf.compact({}, _COMPACT_RESERVE);
 }
 
 

@@ -26,11 +26,11 @@
 
 
 
-#define REGISTER_00(DISPLAY_NAME, FIXTURE, NAME, FUNC)                      \
-BENCHMARK_DEFINE_F(FIXTURE, NAME)(benchmark::State& state) {                \
+#define REGISTER_00(DISPLAY_NAME, FIXTURE, FUNC)                            \
+BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
     FUNC(state);                                                            \
 }                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
+BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
@@ -38,14 +38,13 @@ BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
         {0} /* FULL_LOAD FLAG: 0 = false, 1 = true */                       \
     })                                                                      \
     ->Unit(benchmark::kMicrosecond);
-//    ->Iterations(20)                                                      \
 
 
-#define REGISTER_01(DISPLAY_NAME, FIXTURE, NAME, FUNC)                      \
-BENCHMARK_DEFINE_F(FIXTURE, NAME)(benchmark::State& state) {                \
+#define REGISTER_01(DISPLAY_NAME, FIXTURE, FUNC)                            \
+BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
     FUNC(state);                                                            \
 }                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
+BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
@@ -53,37 +52,67 @@ BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
         {1} /* FULL_LOAD FLAG: 0 = false, 1 = true */                       \
     })                                                                      \
     ->Unit(benchmark::kMicrosecond);
-//    ->Iterations(20)                                                      \
 
 
-#define REGISTER_0_1(DISPLAY_NAME, FIXTURE, NAME, FUNC)                      \
-BENCHMARK_DEFINE_F(FIXTURE, NAME)(benchmark::State& state) {                \
+#define REGISTER_0_1(DISPLAY_NAME, FIXTURE, FUNC)                           \
+BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
     FUNC(state);                                                            \
 }                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
+BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
         benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0, 1} /* FULL_LOAD FLAG: 0 = false, 1 = true */                    \
+        {0, 1}                                                              \
     })                                                                      \
     ->Unit(benchmark::kMicrosecond);
-//    ->Iterations(20)                                                      \
 
 
-#define REGISTER_FULL(DISPLAY_NAME, FIXTURE, NAME, FUNC)                      \
-BENCHMARK_DEFINE_F(FIXTURE, NAME)(benchmark::State& state) {                \
+    
+
+
+#define REGISTER_00T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                   \
+BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
     FUNC(state);                                                            \
 }                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, NAME)                                         \
+BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
         benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0, 1, 2, 3, 4}                   \
+        {0}                                                                 \
     })                                                                      \
     ->Unit(benchmark::kMicrosecond);
-//    ->Iterations(20)                                                      \
+
+
+#define REGISTER_01T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                   \
+BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
+    FUNC(state);                                                            \
+}                                                                           \
+BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
+    ->Name(DISPLAY_NAME)                                                    \
+    ->ArgNames({"|V|", "Full_Load"})                                        \
+    ->ArgsProduct({                                                         \
+        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
+        {1}                                                                 \
+    })                                                                      \
+    ->Unit(benchmark::kMicrosecond);
+
+
+#define REGISTER_0_1T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                  \
+BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
+    FUNC(state);                                                            \
+}                                                                           \
+BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
+    ->Name(DISPLAY_NAME)                                                    \
+    ->ArgNames({"|V|", "Full_Load"})                                        \
+    ->ArgsProduct({                                                         \
+        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
+        {0, 1}                                                              \
+    })                                                                      \
+    ->Unit(benchmark::kMicrosecond);
+
+
 
 
     
@@ -185,9 +214,8 @@ public:
         build_mesh(file_path, Rand_Sphere, n);
 
         
-
         if(file_path, state.name().find("Load") == std::string::npos) {
-            std::vector<size_t> mesh_Sizes = load_mesh_storage(file_path);
+            std::vector<size_t> mesh_Sizes = load_mesh_storage(file_path, state.range(1));
 
             V = mesh_Sizes[0];
             F = mesh_Sizes[1];
@@ -244,6 +272,7 @@ public:
     void run_smoothing(benchmark::State& state);
     void run_subdivision(benchmark::State& state);
     void run_collapse(benchmark::State& state);
+    void run_render_export(benchmark::State& state);
 
 protected:
     volatile double _benchmark_sink = 0.0;
@@ -287,6 +316,7 @@ protected:
     virtual void _smoothing() = 0;
     virtual void _subdivision() = 0;
     virtual void _collapse() = 0;
+    virtual void _render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) = 0;
 
 };
 

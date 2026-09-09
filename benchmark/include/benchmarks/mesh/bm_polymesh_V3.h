@@ -8,20 +8,20 @@
 // ----------------------------------------------------------------------------
 
 
-
+template<PolyMesh::V3::TraitsC TraitsT>
 class Benchmark_PolyMesh_V03 : public IBenchmark {
 protected:
-    using Mesh = PolyMesh::V3::PolyMesh<PolyMesh::V3::Traits<float, std::uint32_t, std::uint8_t>>;
+    //using Mesh = PolyMesh::V3::PolyMesh<PolyMesh::V3::Traits<float, std::uint32_t, std::uint8_t>>;
+    using Mesh = PolyMesh::V3::PolyMesh<TraitsT>;
     Mesh mesh;
     Mesh mesh_storage;
 
-    Mesh::Vec<Mesh::T::Vertices::Vertex> vnormals;
-    Mesh::Vec<Mesh::T::Vertices::Vertex> fnormals;
+    typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> vnormals;
+    typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> fnormals;
 
 protected:
     std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
         mesh_storage = Mesh();
-        mesh_storage.relations().invalidate(PolyMesh::V3::CacheFlag::ALL);
         mesh_storage.read_file(FileName);
         
         if(load_full == 1 || load_full == 2) mesh_storage.VV_HE();
@@ -35,7 +35,7 @@ protected:
 
     void load_mesh_from_storage(int load_full) override {
         mesh = mesh_storage;
-        mesh.set_validate_modifications(false);
+        //mesh.set_validate_modifications(false);
 
         if(load_full == 1 || load_full == 2) mesh.VV_HE();
         if(load_full == 1 || load_full == 3) mesh.VF();
@@ -78,10 +78,12 @@ protected:
     void _smoothing() override;
     void _subdivision() override;
     void _collapse() override;
+    void _render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) override;
 
 
     void _temp_collapse_vertex(Mesh::Index From, Mesh::Index To);
 };
 
 
+#include "benchmarks/mesh/bm_polymesh_V3.inl"
 #endif

@@ -1,10 +1,11 @@
-#include "benchmarks/mesh/bm_polymesh_V3.h"
+//#include "benchmarks/mesh/bm_polymesh_V3.h"
 
 
 
 
-void Benchmark_PolyMesh_V03::_iterate_V_raw() {
-    Mesh::T::Vertices::Vertex p({0, 0, 0});                    // Barycenter point
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_V_raw() {
+    typename Mesh::T::Vertices::Vertex p({0, 0, 0});                    // Barycenter point
 
     for (size_t i = 0; i < mesh.n_vertices(); ++i) {
         //const auto& v = mesh.vertex(i);
@@ -20,7 +21,8 @@ void Benchmark_PolyMesh_V03::_iterate_V_raw() {
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_F_raw() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_F_raw() {
     size_t sink = 0;
 
     for(size_t fi = 0; fi < mesh.n_faces(); ++fi) {
@@ -35,8 +37,9 @@ void Benchmark_PolyMesh_V03::_iterate_F_raw() {
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_V() {
-    Mesh::T::Vertices::Vertex p({0, 0, 0});                // Barycenter point
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_V() {
+    typename Mesh::T::Vertices::Vertex p({0, 0, 0});                // Barycenter point
 
     for(auto vi : mesh.vertices()) {
         auto v = vi;
@@ -55,7 +58,8 @@ void Benchmark_PolyMesh_V03::_iterate_V() {
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_F() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_F() {
     size_t sink = 0;
     size_t iterations = 0;
 
@@ -73,7 +77,8 @@ void Benchmark_PolyMesh_V03::_iterate_F() {
 
 /*
 
-void Benchmark_PolyMesh_V03::_iterate_E() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_E() {
     Mesh::EIter ei = mesh.edges_begin();
     Mesh::EIter eend = mesh.edges_end();
     size_t sink = 0;
@@ -87,7 +92,8 @@ void Benchmark_PolyMesh_V03::_iterate_E() {
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_random_V(const std::vector<size_t>& rand) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_random_V(const std::vector<size_t>& rand) {
     Mesh::T::Vertex p(0,0,0); 
 
     for(size_t idx : rand) {
@@ -102,7 +108,8 @@ void Benchmark_PolyMesh_V03::_iterate_random_V(const std::vector<size_t>& rand) 
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_random_F(const std::vector<size_t>& rand) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_random_F(const std::vector<size_t>& rand) {
     size_t sink = 0;
 
     for(size_t idx : rand) {
@@ -117,7 +124,8 @@ void Benchmark_PolyMesh_V03::_iterate_random_F(const std::vector<size_t>& rand) 
 }
 
 
-void Benchmark_PolyMesh_V03::_iterate_random_E(const std::vector<size_t>& rand) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_iterate_random_E(const std::vector<size_t>& rand) {
     size_t sink = 0;
     
     for(size_t idx : rand) {
@@ -133,7 +141,8 @@ void Benchmark_PolyMesh_V03::_iterate_random_E(const std::vector<size_t>& rand) 
 
 
 
-void Benchmark_PolyMesh_V03::_adjacent_VV() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_adjacent_VV() {
     size_t sink = 0;
     auto vend = mesh.vertices_end();
     
@@ -148,7 +157,8 @@ void Benchmark_PolyMesh_V03::_adjacent_VV() {
 }
 
 
-void Benchmark_PolyMesh_V03::_adjacent_VF() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_adjacent_VF() {
     size_t sink = 0;
     Mesh::VIter vi;
     Mesh::VIter vend = mesh.vertices_end();
@@ -165,7 +175,8 @@ void Benchmark_PolyMesh_V03::_adjacent_VF() {
 
 
 
-void Benchmark_PolyMesh_V03::_adjacent_FV() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_adjacent_FV() {
     size_t sink = 0;
     Mesh::FIter fi;
     Mesh::FIter fend = mesh.faces_end();
@@ -181,7 +192,8 @@ void Benchmark_PolyMesh_V03::_adjacent_FV() {
 }
 
 
-void Benchmark_PolyMesh_V03::_adjacent_EF() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_adjacent_EF() {
     size_t sink = 0;
     Mesh::EIter ei = mesh.edges_begin();
     Mesh::EIter eend = mesh.edges_end();
@@ -200,7 +212,8 @@ void Benchmark_PolyMesh_V03::_adjacent_EF() {
 
 
 
-void Benchmark_PolyMesh_V03::run_load_all(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_load_all(benchmark::State& state) {
     for (auto _ : state) {
         const std::string fileName = "./mesh_convex_" + std::to_string(state.range(0)) + ".off";
         load_mesh_storage(fileName, true);
@@ -208,7 +221,8 @@ void Benchmark_PolyMesh_V03::run_load_all(benchmark::State& state) {
 }
 
 
-void Benchmark_PolyMesh_V03::run_iterate_loaded_E(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_iterate_loaded_E(benchmark::State& state) {
     for (auto _ : state) {
         _iterate_E();
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -216,7 +230,8 @@ void Benchmark_PolyMesh_V03::run_iterate_loaded_E(benchmark::State& state) {
 }
 
 
-void Benchmark_PolyMesh_V03::run_iterate_loaded_random_E(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_iterate_loaded_random_E(benchmark::State& state) {
     for (auto _ : state) {
         _iterate_random_E(_rand_e);
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -225,7 +240,8 @@ void Benchmark_PolyMesh_V03::run_iterate_loaded_random_E(benchmark::State& state
 
 
 
-void Benchmark_PolyMesh_V03::run_adjacent_loaded_VV(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_adjacent_loaded_VV(benchmark::State& state) {
     for (auto _ : state) {
         _adjacent_VV();
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -234,7 +250,8 @@ void Benchmark_PolyMesh_V03::run_adjacent_loaded_VV(benchmark::State& state) {
 
 
 
-void Benchmark_PolyMesh_V03::run_adjacent_loaded_VF(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_adjacent_loaded_VF(benchmark::State& state) {
     for (auto _ : state) {
         _adjacent_VF();
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -243,7 +260,8 @@ void Benchmark_PolyMesh_V03::run_adjacent_loaded_VF(benchmark::State& state) {
 
 
 
-void Benchmark_PolyMesh_V03::run_adjacent_loaded_FV(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_adjacent_loaded_FV(benchmark::State& state) {
     for (auto _ : state) {
         _adjacent_FV();
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -252,7 +270,8 @@ void Benchmark_PolyMesh_V03::run_adjacent_loaded_FV(benchmark::State& state) {
 
 
 
-void Benchmark_PolyMesh_V03::run_adjacent_loaded_EF(benchmark::State& state) {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::run_adjacent_loaded_EF(benchmark::State& state) {
     for (auto _ : state) {
         _adjacent_EF();
         benchmark::DoNotOptimize(_benchmark_sink);
@@ -262,12 +281,13 @@ void Benchmark_PolyMesh_V03::run_adjacent_loaded_EF(benchmark::State& state) {
 */
 
 
-void Benchmark_PolyMesh_V03::_convert_to_trimesh() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_convert_to_trimesh() {
     size_t edit_count = 0;
 
     // presaving facehandles:
     // to not run for the newly added faces again
-    std::vector<Mesh::T::Index> original_faces(0);
+    std::vector<typename Mesh::T::Index> original_faces(0);
     original_faces.reserve(mesh.n_faces());
     for(auto fIter : mesh.faces()) {
         original_faces.push_back(fIter.idx());
@@ -283,15 +303,15 @@ void Benchmark_PolyMesh_V03::_convert_to_trimesh() {
 
         if(f.size() <= 3) continue; // already a triangle
 
-        std::array<Mesh::T::Index, 16> verts; // matches your degree upper bound
-        for(Mesh::T::Index k = 0; k < f.size(); ++k) verts[k] = f[k];
+        std::array<typename Mesh::T::Index, 16> verts; // matches your degree upper bound
+        for(typename Mesh::T::Index k = 0; k < f.size(); ++k) verts[k] = f[k];
 
         // mesh editing
         mesh.delete_face(fh);
 
         for(size_t i = 1; i + 1 < f.size(); ++i) {
-            Mesh::T::Index tri[3] = {verts[0], verts[i], verts[i+1]};
-            auto new_fh = mesh.add_face(std::span<const Mesh::T::Index>(tri, 3));
+            typename Mesh::T::Index tri[3] = {verts[0], verts[i], verts[i+1]};
+            auto new_fh = mesh.add_face(std::span<const typename Mesh::T::Index>(tri, 3));
         }
 
 
@@ -308,7 +328,8 @@ void Benchmark_PolyMesh_V03::_convert_to_trimesh() {
 
 
 
-void Benchmark_PolyMesh_V03::_circular() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_circular() {
     int counter = 0;
 
     for(auto v : mesh.vertices()) {
@@ -328,8 +349,9 @@ void Benchmark_PolyMesh_V03::_circular() {
 
 
 
-void Benchmark_PolyMesh_V03::_barycenter() {
-    Mesh::T::Vertices::Vertex point({0, 0, 0});
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_barycenter() {
+    typename Mesh::T::Vertices::Vertex point({0, 0, 0});
 
     for (auto vit : mesh.vertices()) {
         point[0] += vit[0];
@@ -337,6 +359,7 @@ void Benchmark_PolyMesh_V03::_barycenter() {
         point[2] += vit[2];
     }
         
+    size_t n_v = mesh.n_vertices();
     point[0] /= mesh.n_vertices();
     point[1] /= mesh.n_vertices();
     point[2] /= mesh.n_vertices();
@@ -352,12 +375,13 @@ void Benchmark_PolyMesh_V03::_barycenter() {
 
 
 
-void Benchmark_PolyMesh_V03::_normal() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_normal() {
     // face normals: first 3 vertices of each face, same planar assumption PMP uses
     if(fnormals.size() != mesh.n_faces())
         fnormals.resize(mesh.n_faces());
 
-    Mesh::Index face_idx = 0;
+    typename Mesh::Index face_idx = 0;
     for(auto f : mesh.faces()) {
         auto p0 = mesh.vertices()[f[0]];
         auto p1 = mesh.vertices()[f[1]];
@@ -366,7 +390,7 @@ void Benchmark_PolyMesh_V03::_normal() {
         float e1x = p1[0]-p0[0], e1y = p1[1]-p0[1], e1z = p1[2]-p0[2];
         float e2x = p2[0]-p0[0], e2y = p2[1]-p0[1], e2z = p2[2]-p0[2];
 
-        Mesh::T::Vertices::Vertex n = {
+        typename Mesh::T::Vertices::Vertex n = {
             e1y*e2z - e1z*e2y,
             e1z*e2x - e1x*e2z,
             e1x*e2y - e1y*e2x
@@ -388,7 +412,7 @@ void Benchmark_PolyMesh_V03::_normal() {
     const auto& vf_matrix = mesh.VF(); // builds+caches on first call, free after
 
     for(auto v : mesh.vertices()) {
-        Mesh::T::Vertices::Vertex n = {0, 0, 0};
+        typename Mesh::T::Vertices::Vertex n = {0, 0, 0};
         for (auto vf : vf_matrix.get_faces(v.idx()) ) {
             auto& fn = fnormals[vf];
             n[0] += fn[0]; 
@@ -408,15 +432,16 @@ void Benchmark_PolyMesh_V03::_normal() {
 
 
 
-void Benchmark_PolyMesh_V03::_smoothing() {
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_smoothing() {
     auto& verts = mesh.vertices();
     const auto& vv_matrix = mesh.VV_HE();
 
-    for (Mesh::Index v = 0; v < verts.capacity(); ++v) {
+    for (typename Mesh::Index v = 0; v < verts.capacity(); ++v) {
         if (!verts.is_valid(v)) continue;
 
-        Mesh::T::Vertex p = {0, 0, 0};
-        Mesh::Index c = 0;
+        typename Mesh::T::Vertex p = {0, 0, 0};
+        typename Mesh::Index c = 0;
 
         for (auto w_id : vv_matrix.get_edges(v)) {
             auto w = verts[w_id];
@@ -434,10 +459,10 @@ void Benchmark_PolyMesh_V03::_smoothing() {
 
 
 
-void Benchmark_PolyMesh_V03::_subdivision() {
-    using Index = Mesh::Index;
-    mesh.set_update_EF(true);
-    mesh.set_update_VV_HE(true);
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
+    using Index = typename Mesh::Index;
+    
     mesh.set_validate_modifications(false);
 
 
@@ -456,11 +481,11 @@ void Benchmark_PolyMesh_V03::_subdivision() {
     original_faces.reserve(mesh.n_faces());
     for(auto f : faces) original_faces.push_back(f.idx());
 
-    std::vector<Mesh::T::Vertex> centroids(faces.capacity());
+    std::vector<typename Mesh::T::Vertex> centroids(faces.capacity());
     for(Index fid : original_faces) {
         auto row = faces[fid];
         Index n = row.size();
-        Mesh::T::Vertex c = {0, 0, 0};
+        typename Mesh::T::Vertex c = {0, 0, 0};
         for(Index vid : row) {
             auto p = verts[vid];
             c[0] += p[0]; c[1] += p[1]; c[2] += p[2];
@@ -470,12 +495,12 @@ void Benchmark_PolyMesh_V03::_subdivision() {
     }
 
     // 3. new positions of original vertices, via VV_HE
-    std::vector<Mesh::T::Vertex> new_positions(verts.capacity());
+    std::vector<typename Mesh::T::Vertex> new_positions(verts.capacity());
     const auto& vv = mesh.VV_HE();
 
     for(Index v : original_vertices) {
         Index n = 0;
-        Mesh::T::Vertex sum = {0, 0, 0};
+        typename Mesh::T::Vertex sum = {0, 0, 0};
         for(Index w : vv.get_edges(v)) {
             auto p = verts[w];
             sum[0] += p[0]; sum[1] += p[1]; sum[2] += p[2];
@@ -514,7 +539,7 @@ void Benchmark_PolyMesh_V03::_subdivision() {
 
     // 5. build final triangles directly from cached edge/centroid-vertex data
     for(const auto& e : edges) {
-        bool has_left  = e.f_left  != Mesh::T::INDEX_INVALID;
+        bool has_left = e.f_left  != Mesh::T::INDEX_INVALID;
         bool has_right = e.f_right != Mesh::T::INDEX_INVALID;
 
         if(has_left && has_right) {
@@ -547,14 +572,15 @@ void Benchmark_PolyMesh_V03::_subdivision() {
         row[2] = new_positions[v][2];
     }
     
+    mesh.compact(false, false);
+    //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
 
 
 
-
-
-void Benchmark_PolyMesh_V03::_temp_collapse_vertex(Mesh::Index From, Mesh::Index To) {
-    using Index = Mesh::Index;
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_temp_collapse_vertex(typename Mesh::Index From, typename Mesh::Index To) {
+    using Index = typename Mesh::Index;
     const auto& vf_matrix = mesh.VF();
     std::vector<Index> from_faces;
     for(auto vf : vf_matrix.get_faces(From)) {
@@ -567,10 +593,8 @@ void Benchmark_PolyMesh_V03::_temp_collapse_vertex(Mesh::Index From, Mesh::Index
         for(Index v : row) if(v == To) { has_to = true; break; }
 
         if(has_to) {
-            // face touches BOTH From and To -- adjacent to the collapsed edge, remove it
             mesh.delete_face(fid);
         } else {
-            // face touches From only -- relabel From -> To, keep the face
             std::vector<Index> new_verts(row.begin(), row.end());
             for(auto& v : new_verts) if(v == From) v = To;
             mesh.delete_face(fid);
@@ -583,9 +607,11 @@ void Benchmark_PolyMesh_V03::_temp_collapse_vertex(Mesh::Index From, Mesh::Index
 
 
 
-void Benchmark_PolyMesh_V03::_collapse() {
-    using Index = Mesh::Index;  
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
+    using Index = typename Mesh::Index;  
 
+    mesh.set_validate_modifications(false);
     mesh.set_update_VF(true);
     //mesh.set_validate_modifications(true);
     
@@ -596,7 +622,6 @@ void Benchmark_PolyMesh_V03::_collapse() {
     orig_face_ids.reserve(mesh.n_faces());
     for(auto f : faces) orig_face_ids.push_back(f.idx());
 
-    // Phase 1: split every original face, remember (new_centroid, neighbor)
     std::vector<std::pair<Index, Index>> to_collapse;
     to_collapse.reserve(orig_face_ids.size());
 
@@ -604,7 +629,7 @@ void Benchmark_PolyMesh_V03::_collapse() {
         auto row = faces[fid];
         Index n = row.size();
 
-        Mesh::T::Vertex centroid = {0, 0, 0};
+        typename Mesh::T::Vertex centroid = {0, 0, 0};
         for(Index vid : row) {
             auto p = mesh.vertices()[vid];
             centroid[0] += p[0]; centroid[1] += p[1]; centroid[2] += p[2];
@@ -616,9 +641,6 @@ void Benchmark_PolyMesh_V03::_collapse() {
         to_collapse.emplace_back(new_v, neighbor);
     }
 
-    // Phase 2: snapshot vertex->face adjacency ONCE, post-split, into a
-    // plain local structure. This is the fix -- no further mesh.VF() calls
-    // anywhere below, so mutation never forces a rebuild.
     Index max_v = mesh.vertices().capacity();
     std::vector<std::vector<Index>> incident(max_v);
     {
@@ -631,16 +653,12 @@ void Benchmark_PolyMesh_V03::_collapse() {
         }
     }
 
-    std::array<Index, 5> hist{0, 0, 0, 0, 0};
-    for (auto& [from, to] : to_collapse) {
-        Index sz = static_cast<Index>(incident[from].size());
-        hist[std::min<Index>(sz, 4)]++;
-    }
     std::vector<bool> face_dead(faces.capacity(), false);
 
-    // Phase 3: all collapses driven purely by the local snapshot
+    std::vector<std::vector<Index>> to_readd;
+
     for(auto [from, to] : to_collapse) {
-        std::vector<std::vector<Index>> to_readd;
+        to_readd.clear();
 
         for(Index fid : incident[from]) {
             if(face_dead[fid]) continue;
@@ -652,15 +670,15 @@ void Benchmark_PolyMesh_V03::_collapse() {
             std::vector<Index> new_verts(row.begin(), row.end());
             for(auto& v : new_verts) if(v == from) v = to;
 
-            mesh.delete_face(fid);      // delete FIRST, always
+            mesh.delete_face(fid);
             face_dead[fid] = true;
 
             if(!has_to) {
-                to_readd.push_back(std::move(new_verts)); // defer the add
+                to_readd.push_back(std::move(new_verts));
             }
         }
 
-        for(auto& verts : to_readd) {   // now add, after ALL deletes for this vertex are done
+        for(auto& verts : to_readd) {
             Index new_fid = mesh.add_face(verts);
             incident[to].push_back(new_fid);
         }
@@ -668,5 +686,34 @@ void Benchmark_PolyMesh_V03::_collapse() {
         mesh.delete_vertex(from);
     }
 
+    mesh.compact(false, false);
     //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+}
+
+
+
+
+
+
+
+
+
+template<PolyMesh::V3::TraitsC TraitsT>
+void Benchmark_PolyMesh_V03<TraitsT>::_render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) {
+    using Index = typename Mesh::Index;  
+
+    out_positions.resize(mesh.n_vertices() * 3);
+    Index i = 0;
+    for(auto v : mesh.vertices()) {
+        out_positions[i*3+0] = v[0]; out_positions[i*3+1] = v[1]; out_positions[i*3+2] = v[2];
+        ++i;
+    }
+
+    Index total_deg = 0;
+    for(auto f : mesh.faces()) total_deg += f.size();
+    out_indices.resize(total_deg);
+
+    Index j = 0;
+    for(auto f : mesh.faces())
+        for(Index vid : f) out_indices[j++] = vid;
 }

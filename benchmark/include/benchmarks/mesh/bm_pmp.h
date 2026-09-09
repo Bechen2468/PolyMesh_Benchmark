@@ -78,5 +78,6 @@ protected:
     void _smoothing() override;
     void _subdivision() override;
     void _collapse() override;
+    void _render_export(std::vector<float>& out_positions, std::vector<int>& out_indices) override;
 };
 #endif

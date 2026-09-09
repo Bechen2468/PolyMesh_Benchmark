@@ -83,6 +83,10 @@ private:
         _rows.resize(v_idx);
         _valid.resize(v_idx, 0);
     }
+
+    
+    // TODO
+    void compact(std::span<Index> new_order, bool rebuild_reserve) {}
 };
 
 
@@ -250,6 +254,10 @@ private:
             ++_valid_count;
         }
     }
+
+    
+    // TODO
+    void compact(std::span<Index> new_order, bool rebuild_reserve) {}
 };
 
 
@@ -278,7 +286,7 @@ private:
 
 
 
-// used to check private friend accessable function requirements
+// checks private friend accessable function requirements
 struct _Traits_InternalC {
     template<typename T>
     static constexpr bool check_internal_requirements() {
@@ -326,11 +334,19 @@ concept TraitsC = requires {
 
 
 
+
+
+
+
+
+
+
+
 template<typename ScalarT, typename IndexT = std::uint32_t, typename BinSizeT = std::uint8_t, typename MeshT = void>
 struct Traits {
     template<typename NewMeshT>
     using Rebind = Traits<ScalarT, IndexT, BinSizeT, NewMeshT>;   // for rebinding the friend object types
-private:
+protected:
     friend MeshT;
 
 
@@ -351,8 +367,6 @@ public:
     
     using VV_HE = VV_HE_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
     using VF = VF_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
-    //using VV_HE = Vec_Vec_Matrix<IndexT, BinSizeT, MeshT>;
-    //using VF = Vec_Vec_Matrix<IndexT, BinSizeT, MeshT>;
 
     using EF = EF_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
     using Edge = EF::Edge;
