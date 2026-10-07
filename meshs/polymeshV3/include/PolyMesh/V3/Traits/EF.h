@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "PolyMesh/V3/DataStructs/D_Ragged_Matrix.h"
 #include "PolyMesh/V3/DataStructs/Append_Ragged_Matrix.h"
+#include "PolyMesh/V3/DataStructs/VecVec_Matrix.h"
 // ----------------------------------------------------------------------------
 
 
@@ -264,6 +265,74 @@ private:
 };
 
 
+
+
+
+
+
+
+template<typename IndexT, typename MeshT = void>
+struct EF_Vec_Vec_Matrix {
+private:
+    friend MeshT;
+
+public:
+    using Index = IndexT;
+    static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
+
+private:
+    struct _Edge_Data { Index v1; Index f_left, f_right; };
+    using _Matrix = Vec_Vec_Matrix<_Edge_Data, Index, false>;
+    _Matrix _data;
+    using Group_View = typename _Matrix::View;
+
+public:
+    struct Edge { Index v0, v1; Index f_left, f_right; };
+    using Const_Group_View = typename _Matrix::Const_View;
+
+    EF_Vec_Vec_Matrix(float Reserve_Perz = 0.2): _data(0.2f, 0.4f, 3) {}
+
+    EF_Vec_Vec_Matrix(const EF_Vec_Vec_Matrix&) = default;
+    EF_Vec_Vec_Matrix(EF_Vec_Vec_Matrix&&) noexcept = default;
+    EF_Vec_Vec_Matrix& operator=(const EF_Vec_Vec_Matrix&) = default;
+    EF_Vec_Vec_Matrix& operator=(EF_Vec_Vec_Matrix&&) noexcept = default;
+
+    Const_Group_View get_edges(Index v0) const { return _data.row(v0); }
+
+    Edge get_edge(Index v0, Index v1) const {
+        if (v0 > v1) std::swap(v0, v1);
+        for (auto _e : _data.row(v0)) {
+            if (_e.v1 != v1) continue;
+            return {v0, v1, _e.f_left, _e.f_right};
+        }
+        return {v0, v1, INDEX_INVALID, INDEX_INVALID};
+    }
+
+    bool edge_exists(Index v0, Index v1) const {
+        Edge e = get_edge(v0, v1);
+        return e.f_left != INDEX_INVALID || e.f_right != INDEX_INVALID;
+    }
+
+    Index edge_face_count(Index v0, Index v1) const {
+        Index a = v0, b = v1;
+        if (a > b) std::swap(a, b);
+        if (!edge_exists(a, b)) return 0;
+        auto e = get_edge(a, b);
+        return (e.f_left != INDEX_INVALID) + (e.f_right != INDEX_INVALID);
+    }
+
+    bool is_vertex_valid(Index v0) const { return _data.is_valid(v0); }
+
+private:
+    Group_View get_edges(Index v0) { return _data.row(v0); }
+    Index edge_append(Index row_idx, const _Edge_Data& value) { return _data.row_append(row_idx, value); }
+    void edge_remove_swap(Index row_idx, Index edge_slot) { _data.row_remove_swap(row_idx, edge_slot); }
+    void set_row_valid(Index row_idx) { _data.reinit_row(row_idx); }
+    void set_row_invalid(Index row_idx) { _data.set_invalid(row_idx); }
+    void reserve(Index size) { _data.reserve(size); }
+    void set_largest_vertex_idx(Index v_idx) { _data.grow_row_count(v_idx); }
+    void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
+};
 
 }
 #endif

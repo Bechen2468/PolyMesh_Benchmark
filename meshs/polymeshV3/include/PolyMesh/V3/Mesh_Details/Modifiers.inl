@@ -200,12 +200,13 @@ PM_T
 
 PM_T
 [[nodiscard]] std::tuple<typename PM::Index, typename PM::Index> PM::edge_bordering_faces(Index P0, Index P1) {
-    Index v0 = P0, v1 = P1;
-    if (v0 > v1) std::swap(v0, v1);
+    if (P0 > P1) std::swap(P0, P1);
     const auto& ef = EF();
-    if (!ef.edge_exists(v0, v1)) return {T::INDEX_INVALID, T::INDEX_INVALID};
-    auto e = ef.get_edge(v0, v1);
-    return {e.f_left, e.f_right};
+    auto row = ef.get_edges(P0);
+    for (Index k = 0; k < row.size(); ++k) {
+        if (row[k].v1 == P1) return {row[k].f_left, row[k].f_right};
+    }
+    return {T::INDEX_INVALID, T::INDEX_INVALID};
 }
 
 
@@ -260,6 +261,197 @@ std::tuple<typename PM::Index, typename PM::Index> PM::flip(Index F0, Index F1) 
 
 
 
+
+#pragma region SPLIT_COLLAPSE_MINIMAL
+PM_T
+typename PM::Index PM::split(Index F, std::span<const Scalar, 3> P) {
+    auto row = faces()[F];
+    std::vector<Index> face_verts(row.begin(), row.end());
+    Index n = static_cast<Index>(face_verts.size());
+    assert(n == 3 && "split: in-place fast path currently assumes triangles");
+
+    Index new_v = add_vertex(P);
+
+    _storage_edge_removes.clear();
+    _storage_edge_adds.clear();
+    _storage_edge_edits.clear();
+    _storage_vf_removes.clear();
+    _storage_vf_adds.clear();
+
+    Index v0 = face_verts[0], v1 = face_verts[1], v2 = face_verts[2];
+
+    Index f_reuse = F;
+    Index f_new1  = _f.add(std::array<Index,3>{new_v, v1, v2});
+    Index f_new2  = _f.add(std::array<Index,3>{new_v, v2, v0});
+
+    // TODO:
+    // make one copy
+    //_f.set_row(f_reuse, std::array<Index,3>{new_v, v0, v1});
+    auto f = _f[f_reuse];
+    f[0] = new_v;
+    f[1] = v0;
+    f[2] = v1;
+    
+
+    _storage_edge_adds.emplace_back(new_v, v0, f_reuse);
+    _storage_edge_adds.emplace_back(new_v, v1, f_new1);
+    _storage_edge_adds.emplace_back(new_v, v2, f_new2);
+
+    _storage_edge_edits.emplace_back(v0, v1, f_reuse);
+    _storage_edge_edits.emplace_back(v1, v2, f_new1);
+    _storage_edge_edits.emplace_back(v2, v0, f_new2);
+
+    _storage_edge_adds.emplace_back(new_v, v0, f_reuse);
+    _storage_edge_adds.emplace_back(v0, new_v, f_new2);
+    _storage_edge_adds.emplace_back(new_v, v1, f_new1);
+    _storage_edge_adds.emplace_back(v1, new_v, f_reuse);
+    _storage_edge_adds.emplace_back(new_v, v2, f_new2);
+    _storage_edge_adds.emplace_back(v2, new_v, f_new1);
+
+    _storage_vf_removes.emplace_back(v0, F);
+    _storage_vf_removes.emplace_back(v1, F);
+    _storage_vf_removes.emplace_back(v2, F);
+    _storage_vf_adds.emplace_back(v0, f_reuse); _storage_vf_adds.emplace_back(v0, f_new2);
+    _storage_vf_adds.emplace_back(v1, f_reuse); _storage_vf_adds.emplace_back(v1, f_new1);
+    _storage_vf_adds.emplace_back(v2, f_new1);  _storage_vf_adds.emplace_back(v2, f_new2);
+    _storage_vf_adds.emplace_back(new_v, f_reuse);
+    _storage_vf_adds.emplace_back(new_v, f_new1);
+    _storage_vf_adds.emplace_back(new_v, f_new2);
+
+    if(_validate_modifications || _update_VV_HE) _VV_HE_apply(_storage_edge_removes, _storage_edge_adds);
+    else _relations.invalidate(CacheFlag::VV_HE);
+
+    if(_validate_modifications || _update_EF) _EF_apply(_storage_edge_removes, _storage_edge_adds, _storage_edge_edits);
+    else _relations.invalidate(CacheFlag::EF);
+
+    if(_validate_modifications || _update_VF) _VF_apply(_storage_vf_removes, _storage_vf_adds);
+    else _relations.invalidate(CacheFlag::VF);
+
+    return new_v;
+}
+
+
+
+
+
+PM_T
+void PM::collapse(Index To_Vertex, Index From_Vertex) {
+    // bordering faces
+    // OLD USING EF
+    //auto [f0, f1] = edge_bordering_faces(To_Vertex, From_Vertex);
+
+    Index f0 = T::INDEX_INVALID;
+    Index f1 = T::INDEX_INVALID;
+    for(Index fid : VF().get_faces(From_Vertex)) {
+        auto row = faces()[fid];
+        bool has_to = false;
+        for(Index v : row) if(v == To_Vertex) { has_to = true; break; }
+        if(!has_to) continue;
+
+        if(f0 == T::INDEX_INVALID) f0 = fid;
+        else { f1 = fid; break; }   // an edge borders at most 2 faces -- stop once both are found
+    }
+
+    // edit instructions for all matrices ( ef, vf, vv_he, ...)
+    _storage_edge_removes.clear();
+    _storage_edge_adds.clear();
+    _storage_vf_removes.clear();
+    _storage_vf_adds.clear();
+    _storage_faces_to_delete.clear();
+
+    auto& edge_removes    = _storage_edge_removes;
+    auto& edge_adds       = _storage_edge_adds;
+    auto& vf_removes      = _storage_vf_removes;
+    auto& vf_adds         = _storage_vf_adds;
+    auto& faces_to_delete = _storage_faces_to_delete;
+
+
+    // checks if the adjacent faces are trifaces:
+    // those faces wont survive, so its a delete
+    // else ( polyface ): faces shrink the edge away which requires more editing then just delete
+    auto handle_adjacent_face = [&](Index fid) {
+        if(fid == T::INDEX_INVALID) return;
+
+        auto row = faces()[fid];
+        Index n = row.size();
+        Index pos = T::INDEX_INVALID;
+        for(Index i = 0; i < n; ++i) {
+            if(row[i] == From_Vertex) { 
+                pos = i; 
+                break; 
+            }
+        }
+        Index prev = row[(pos + n - 1) % n];
+        Index next = row[(pos + 1) % n];
+
+        if(n == 3) {
+            for(Index i = 0; i < n; ++i) {
+                edge_removes.emplace_back(row[i], row[(i + 1) % n], fid);
+                vf_removes.emplace_back(row[i], fid);
+            }
+            faces_to_delete.push_back(fid);
+        } else {
+            edge_removes.emplace_back(prev, From_Vertex, fid);
+            edge_removes.emplace_back(From_Vertex, next, fid);
+            edge_adds.emplace_back(prev, next, fid);
+            vf_removes.emplace_back(From_Vertex, fid);
+        }
+    };
+
+
+    handle_adjacent_face(f0);
+    if(f1 != f0) handle_adjacent_face(f1);
+
+
+
+    // handle all non adjacent faces
+    for(Index fid : VF().get_faces(From_Vertex)) {
+        if(fid == f0 || fid == f1) continue;
+
+        auto row = faces()[fid];
+        Index n = row.size();
+        Index pos = T::INDEX_INVALID;
+        for(Index i = 0; i < n; ++i) {
+            if(row[i] == From_Vertex) { 
+                pos = i; 
+                break; 
+            }
+        }
+        Index prev = row[(pos + n - 1) % n];
+        Index next = row[(pos + 1) % n];
+
+        edge_removes.emplace_back(prev, From_Vertex, fid);
+        edge_removes.emplace_back(From_Vertex, next, fid);
+        edge_adds.emplace_back(prev, To_Vertex, fid);
+        edge_adds.emplace_back(To_Vertex, next, fid);
+        vf_removes.emplace_back(From_Vertex, fid);
+        vf_adds.emplace_back(To_Vertex, fid);
+    }
+
+
+    // apply to all matrices
+    if(_validate_modifications || _update_VV_HE) _VV_HE_apply(edge_removes, edge_adds);
+    else _relations.invalidate(CacheFlag::VV_HE);
+
+    if(_validate_modifications || _update_EF) _EF_apply(edge_removes, edge_adds, {});
+    else _relations.invalidate(CacheFlag::EF);
+
+    if(_validate_modifications || _update_VF) _VF_apply(vf_removes, vf_adds);
+    else _relations.invalidate(CacheFlag::VF);
+
+    for(Index fid : faces_to_delete) _f.remove(fid);
+    _v.remove(From_Vertex);
+}
+#pragma endregion SPLIT_COLLAPSE_MINIMAL
+
+
+
+
+
+
+
+#pragma region SPLIT_COLLAPSE_OLD_ADD_DELETE
+/*
 PM_T
 PM::Index PM::split(Index F, std::span<const Scalar, 3> P) {
     auto row = faces()[F];
@@ -275,5 +467,31 @@ PM::Index PM::split(Index F, std::span<const Scalar, 3> P) {
     }
     return new_v;
 }
+
+PM_T
+void PM::collapse(Index To_Vertex, Index From_Vertex) {
+    const auto& vf_matrix = VF();
+    std::vector<Index> from_faces;
+    for(Index fid : vf_matrix.get_faces(From_Vertex)) from_faces.push_back(fid);
+
+    for(Index fid : from_faces) {
+        auto row = faces()[fid];
+        bool has_to = false;
+        for(Index v : row) if(v == To_Vertex) { has_to = true; break; }
+
+        if(has_to) {
+            delete_face(fid);
+        } else {
+            std::vector<Index> new_verts(row.begin(), row.end());
+            for(auto& v : new_verts) if(v == From_Vertex) v = To_Vertex;
+            delete_face(fid);
+            add_face(new_verts);
+        }
+    }
+
+    delete_vertex(From_Vertex);
+}
+*/
+#pragma endregion SPLIT_COLLAPSE_OLD_ADD_DELETE
 
 };

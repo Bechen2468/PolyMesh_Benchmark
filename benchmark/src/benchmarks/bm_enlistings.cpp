@@ -1,5 +1,6 @@
 #include "benchmarks/mesh/bm_openmesh.h"
 #include "benchmarks/mesh/bm_pmp.h"
+#include "benchmarks/mesh/bm_libigl.h"
 #include "benchmarks/mesh/bm_polymesh_V1.h"
 #include "benchmarks/mesh/bm_polymesh_V2.h"
 #include "benchmarks/structs/matrix/ibenchmark_matrix.h"
@@ -142,6 +143,15 @@ REGISTER_01(Pmp_Lib__V03, Benchmark_Pmp_Lib__V03, Dual_to_TriMesh, run_convert_t
 */
 
 
+
+
+static const std::vector<int64_t> VALUES_0    = {0};
+static const std::vector<int64_t> VALUES_1    = {1};
+static const std::vector<int64_t> VALUES_0_1  = {0, 1};
+static const std::vector<int64_t> VALUES_ALL  = {0, 1, 2, 3, 4};
+
+
+
 using Traits_Default = PolyMesh::V3::Traits<float, std::uint32_t, std::uint8_t>;
 
 
@@ -161,52 +171,111 @@ using Traits_Append = Traits_AppendT<float, std::uint32_t, std::uint8_t>;
 
 
 
-REGISTER_01("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, run_load)
-REGISTER_01("SurfaceMesh_/V03/Load", Benchmark_Pmp_Lib__V03, run_load)
-REGISTER_0_1T("D_Ragged____/V03/Load", Benchmark_PolyMesh_V03, Traits_Default, run_load)
-REGISTER_0_1T("Apd_Ragged__/V03/Load", Benchmark_PolyMesh_V03, Traits_Append, run_load)
+template<typename ScalarT, typename IndexT = std::uint32_t, typename BinSizeT = std::uint8_t, typename MeshT = void>
+struct Traits_VecVecT : public PolyMesh::V3::Traits<ScalarT, IndexT, BinSizeT, MeshT> {
+    template<typename NewMeshT>
+    using Rebind = Traits_VecVecT<ScalarT, IndexT, BinSizeT, NewMeshT>;   //requires rebind to itself ( overload always required )
+
+    using Faces = PolyMesh::V3::Faces_Vec_Vec_Matrix<IndexT, MeshT>;
+    using VV_HE = PolyMesh::V3::VV_HE_Vec_Vec_Matrix<IndexT, MeshT>;
+    using VF = PolyMesh::V3::VF_Vec_Vec_Matrix<IndexT, MeshT>;
+    using EF = PolyMesh::V3::EF_Vec_Vec_Matrix<IndexT, MeshT>;
+};
+
+using Traits_VecVec = Traits_VecVecT<float, std::uint32_t, std::uint8_t>;
+
+
+
+
+
+template<typename ScalarT, typename IndexT = std::uint32_t, typename BinSizeT = std::uint8_t, typename MeshT = void>
+struct Traits_VecEigenT : public PolyMesh::V3::Traits<ScalarT, IndexT, BinSizeT, MeshT> {
+    template<typename NewMeshT>
+    using Rebind = Traits_VecEigenT<ScalarT, IndexT, BinSizeT, NewMeshT>;   //requires rebind to itself ( overload always required )
+
+    using Faces = PolyMesh::V3::Faces_Vec_Eigen_Matrix<IndexT, MeshT>;
+    using VV_HE = PolyMesh::V3::VV_HE_Vec_Eigen_Matrix<IndexT, MeshT>;
+    using VF = PolyMesh::V3::VF_Vec_Eigen_Matrix<IndexT, MeshT>;
+    //using EF = PolyMesh::V3::EF_Vec_Eigen_Matrix<IndexT, MeshT>;  // doesnt exist as its not realisticly implimentable
+};
+
+using Traits_VecEigen = Traits_VecEigenT<float, std::uint32_t, std::uint8_t>;
+
+
+
+
+
+
+REGISTER("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, run_load, VALUES_ALL)
+REGISTER("SurfaceMesh_/V03/Load", Benchmark_Pmp_Lib__V03, run_load, VALUES_1)
+REGISTER("Libigl______/V25/Load", Benchmark_Libigl_V2_5, run_load, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Load", Benchmark_PolyMesh_V03, Traits_Default, run_load, VALUES_ALL)
+REGISTER_T("VecVec______/V03/Load", Benchmark_PolyMesh_V03, Traits_VecVec, run_load, VALUES_ALL)
+REGISTER_T("Apd_Ragged__/V03/Load", Benchmark_PolyMesh_V03, Traits_Append, run_load, VALUES_ALL)
+REGISTER_T("Vec_Eigen___/V03/Load", Benchmark_PolyMesh_V03, Traits_VecEigen, run_load, VALUES_ALL)
+
 
 //REGISTER_01T("D_Ragged____/V03/Load", Benchmark_PolyMesh_V03, Traits_Default, run_load)
 //REGISTER_01T("Apd_Ragged__/V03/Load", Benchmark_PolyMesh_V03, Traits_Append, run_load)
 
-REGISTER_01("OpenMesh____/V11/Circular", Benchmark_OpenMesh_V11, run_circular)
-REGISTER_01("SurfaceMesh_/V03/Circular", Benchmark_Pmp_Lib__V03, run_circular)
-REGISTER_0_1T("D_Ragged____/V03/Circular", Benchmark_PolyMesh_V03, Traits_Default, run_circular)
-REGISTER_0_1T("Apd_Ragged__/V03/Circular", Benchmark_PolyMesh_V03, Traits_Append, run_circular)
+REGISTER("OpenMesh____/V11/Circular", Benchmark_OpenMesh_V11, run_circular, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Circular", Benchmark_Pmp_Lib__V03, run_circular, VALUES_1)
+REGISTER("Libigl______/V25/Circular", Benchmark_Libigl_V2_5, run_circular, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Circular", Benchmark_PolyMesh_V03, Traits_Default, run_circular, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Circular", Benchmark_PolyMesh_V03, Traits_VecVec, run_circular, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Circular", Benchmark_PolyMesh_V03, Traits_Append, run_circular, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Circular", Benchmark_PolyMesh_V03, Traits_VecEigen, run_circular, VALUES_0_1)
 
-REGISTER_01("OpenMesh____/V11/Barycenter", Benchmark_OpenMesh_V11, run_barycenter)
-REGISTER_01("SurfaceMesh_/V03/Barycenter", Benchmark_Pmp_Lib__V03, run_barycenter)
-REGISTER_0_1T("D_Ragged____/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_Default, run_barycenter)
-REGISTER_0_1T("Apd_Ragged__/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_Append, run_barycenter)
-
-
-REGISTER_01("OpenMesh____/V11/Normal", Benchmark_OpenMesh_V11, run_normal)
-REGISTER_01("SurfaceMesh_/V03/Normal", Benchmark_Pmp_Lib__V03, run_normal)
-REGISTER_0_1T("D_Ragged____/V03/Normal", Benchmark_PolyMesh_V03, Traits_Default, run_normal)
-REGISTER_0_1T("Apd_Ragged__/V03/Normal", Benchmark_PolyMesh_V03, Traits_Append, run_normal)
-
-
-REGISTER_01("OpenMesh____/V11/Smoothing", Benchmark_OpenMesh_V11, run_smoothing)
-REGISTER_01("SurfaceMesh_/V03/Smoothing", Benchmark_Pmp_Lib__V03, run_smoothing)
-REGISTER_0_1T("D_Ragged____/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_Default, run_smoothing)
-REGISTER_0_1T("Apd_Ragged__/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_Append, run_smoothing)
-
-REGISTER_01("OpenMesh____/V11/Subdivision", Benchmark_OpenMesh_V11, run_subdivision)
-REGISTER_01("SurfaceMesh_/V03/Subdivision", Benchmark_Pmp_Lib__V03, run_subdivision)
-REGISTER_0_1T("D_Ragged____/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_Default, run_subdivision)
-REGISTER_0_1T("Apd_Ragged__/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_Append, run_subdivision)
+REGISTER("OpenMesh____/V11/Barycenter", Benchmark_OpenMesh_V11, run_barycenter, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Barycenter", Benchmark_Pmp_Lib__V03, run_barycenter, VALUES_1)
+REGISTER("Libigl______/V25/Barycenter", Benchmark_Libigl_V2_5, run_barycenter, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_Default, run_barycenter, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_VecVec, run_barycenter, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_Append, run_barycenter, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Barycenter", Benchmark_PolyMesh_V03, Traits_VecEigen, run_barycenter, VALUES_0_1)
 
 
-REGISTER_01("OpenMesh____/V11/Collapse", Benchmark_OpenMesh_V11, run_collapse)
-REGISTER_01("SurfaceMesh_/V03/Collapse", Benchmark_Pmp_Lib__V03, run_collapse)
-REGISTER_0_1T("D_Ragged____/V03/Collapse", Benchmark_PolyMesh_V03, Traits_Default, run_collapse)
-REGISTER_0_1T("Apd_Ragged__/V03/Collapse", Benchmark_PolyMesh_V03, Traits_Append, run_collapse)
+REGISTER("OpenMesh____/V11/Normal", Benchmark_OpenMesh_V11, run_normal, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Normal", Benchmark_Pmp_Lib__V03, run_normal, VALUES_1)
+REGISTER("Libigl______/V25/Normal", Benchmark_Libigl_V2_5, run_normal, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Normal", Benchmark_PolyMesh_V03, Traits_Default, run_normal, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Normal", Benchmark_PolyMesh_V03, Traits_VecVec, run_normal, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Normal", Benchmark_PolyMesh_V03, Traits_Append, run_normal, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Normal", Benchmark_PolyMesh_V03, Traits_VecEigen, run_normal, VALUES_0_1)
 
 
-REGISTER_01("OpenMesh____/V11/Render_Export", Benchmark_OpenMesh_V11, run_render_export)
-REGISTER_01("SurfaceMesh_/V03/Render_Export", Benchmark_Pmp_Lib__V03, run_render_export)
-REGISTER_0_1T("D_Ragged____/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_Default, run_render_export)
-REGISTER_0_1T("Apd_Ragged__/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_Append, run_render_export)
+REGISTER("OpenMesh____/V11/Smoothing", Benchmark_OpenMesh_V11, run_smoothing, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Smoothing", Benchmark_Pmp_Lib__V03, run_smoothing, VALUES_1)
+REGISTER("Libigl______/V25/Smoothing", Benchmark_Libigl_V2_5, run_smoothing, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_Default, run_smoothing, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_VecVec, run_smoothing, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_Append, run_smoothing, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Smoothing", Benchmark_PolyMesh_V03, Traits_VecEigen, run_smoothing, VALUES_0_1)
 
+REGISTER("OpenMesh____/V11/Subdivision", Benchmark_OpenMesh_V11, run_subdivision, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Subdivision", Benchmark_Pmp_Lib__V03, run_subdivision, VALUES_1)
+REGISTER("Libigl______/V25/Subdivision", Benchmark_Libigl_V2_5, run_subdivision, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_Default, run_subdivision, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_VecVec, run_subdivision, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_Append, run_subdivision, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Subdivision", Benchmark_PolyMesh_V03, Traits_VecEigen, run_subdivision, VALUES_0_1)
+
+
+REGISTER("OpenMesh____/V11/Collapse", Benchmark_OpenMesh_V11, run_collapse, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Collapse", Benchmark_Pmp_Lib__V03, run_collapse, VALUES_1)
+REGISTER("Libigl______/V25/Collapse", Benchmark_Libigl_V2_5, run_collapse, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Collapse", Benchmark_PolyMesh_V03, Traits_Default, run_collapse, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Collapse", Benchmark_PolyMesh_V03, Traits_VecVec, run_collapse, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Collapse", Benchmark_PolyMesh_V03, Traits_Append, run_collapse, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Collapse", Benchmark_PolyMesh_V03, Traits_VecEigen, run_collapse, VALUES_0_1)
+
+
+REGISTER("OpenMesh____/V11/Render_Export", Benchmark_OpenMesh_V11, run_render_export, VALUES_1)
+REGISTER("SurfaceMesh_/V03/Render_Export", Benchmark_Pmp_Lib__V03, run_render_export, VALUES_1)
+REGISTER("Libigl______/V25/Render_Export", Benchmark_Libigl_V2_5, run_render_export, VALUES_1)
+REGISTER_T("D_Ragged____/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_Default, run_render_export, VALUES_0_1)
+REGISTER_T("VecVec______/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_VecVec, run_render_export, VALUES_0_1)
+REGISTER_T("Apd_Ragged__/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_Append, run_render_export, VALUES_0_1)
+REGISTER_T("Vec_Eigen___/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_VecEigen, run_render_export, VALUES_0_1)
 
 

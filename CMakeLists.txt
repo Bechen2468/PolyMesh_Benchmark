@@ -16,6 +16,7 @@ include(FetchContent)
 
 
 add_subdirectory(meshs/openmesh)
+add_subdirectory(meshs/libigl)
 add_subdirectory(meshs/polymeshV1)
 add_subdirectory(meshs/polymeshV2)
 add_subdirectory(meshs/polymeshV3)

@@ -20,13 +20,14 @@
 
 
 
-#define RANGE_START        1000000
-#define RANGE_END          1000000
+#define RANGE_START        500000
+#define RANGE_END          RANGE_START
 #define RANGE_MULTIPLIER         4
+#define ITERATIONS              3
 
 
 
-#define REGISTER_00(DISPLAY_NAME, FIXTURE, FUNC)                            \
+#define REGISTER(DISPLAY_NAME, FIXTURE, FUNC, FULL_LOAD_VALUES)             \
 BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
     FUNC(state);                                                            \
 }                                                                           \
@@ -35,43 +36,15 @@ BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
         benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0} /* FULL_LOAD FLAG: 0 = false, 1 = true */                       \
+        FULL_LOAD_VALUES                                                    \
     })                                                                      \
-    ->Unit(benchmark::kMicrosecond);
-
-
-#define REGISTER_01(DISPLAY_NAME, FIXTURE, FUNC)                            \
-BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
-    FUNC(state);                                                            \
-}                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
-    ->Name(DISPLAY_NAME)                                                    \
-    ->ArgNames({"|V|", "Full_Load"})                                        \
-    ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {1} /* FULL_LOAD FLAG: 0 = false, 1 = true */                       \
-    })                                                                      \
-    ->Unit(benchmark::kMicrosecond);
-
-
-#define REGISTER_0_1(DISPLAY_NAME, FIXTURE, FUNC)                           \
-BENCHMARK_DEFINE_F(FIXTURE, FUNC)(benchmark::State& state) {                \
-    FUNC(state);                                                            \
-}                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
-    ->Name(DISPLAY_NAME)                                                    \
-    ->ArgNames({"|V|", "Full_Load"})                                        \
-    ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0, 1}                                                              \
-    })                                                                      \
+    ->Iterations(ITERATIONS)                                                \
     ->Unit(benchmark::kMicrosecond);
 
 
     
 
-
-#define REGISTER_00T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                   \
+#define REGISTER_T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES)   \
 BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
     FUNC(state);                                                            \
 }                                                                           \
@@ -80,39 +53,10 @@ BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
         benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0}                                                                 \
+        FULL_LOAD_VALUES                                                    \
     })                                                                      \
+    ->Iterations(ITERATIONS)                                                \
     ->Unit(benchmark::kMicrosecond);
-
-
-#define REGISTER_01T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                   \
-BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
-    FUNC(state);                                                            \
-}                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
-    ->Name(DISPLAY_NAME)                                                    \
-    ->ArgNames({"|V|", "Full_Load"})                                        \
-    ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {1}                                                                 \
-    })                                                                      \
-    ->Unit(benchmark::kMicrosecond);
-
-
-#define REGISTER_0_1T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC)                  \
-BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
-    FUNC(state);                                                            \
-}                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
-    ->Name(DISPLAY_NAME)                                                    \
-    ->ArgNames({"|V|", "Full_Load"})                                        \
-    ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
-        {0, 1}                                                              \
-    })                                                                      \
-    ->Unit(benchmark::kMicrosecond);
-
-
 
 
     
@@ -190,12 +134,11 @@ public:
 
         // print seperation if first run
         if(n == RANGE_START) {
-            if(_setUpIsFirst && (RANGE_START != RANGE_END || 
-                (
-                    state.name().find("OpenMesh") != std::string::npos && state.name().find("Load") == std::string::npos
-                )
+            if(_setUpIsFirst && (
+                    RANGE_START != RANGE_END ||
+                    (state.name().find("OpenMesh") != std::string::npos && state.name().find("Load") == std::string::npos)
             )) {
-                std::cout << "-----------------------------------------------------------------------------------------------------" << std::endl;
+                std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------" << std::endl;
             }
             _setUpIsFirst = false;
         } else {

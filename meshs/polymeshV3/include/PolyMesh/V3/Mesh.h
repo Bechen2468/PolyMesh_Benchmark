@@ -50,6 +50,16 @@ private:
 
 
 
+    // preallocated vectors for applying changes; tiny edits would be slow with constant realloc
+    std::vector<std::tuple<Index,Index,Index>>  _storage_edge_removes;     // v0,v1,face
+    std::vector<std::tuple<Index,Index,Index>>  _storage_edge_adds;        // v0,v1,face
+    std::vector<std::tuple<Index,Index,Index>>  _storage_edge_edits;       // v0,v1,face
+    std::vector<std::tuple<Index,Index>>        _storage_vf_removes;       // vertex,face
+    std::vector<std::tuple<Index,Index>>        _storage_vf_adds;          // vertex,face
+    std::vector<Index>                          _storage_faces_to_delete;  // face
+
+
+
 public:
     PolyMesh();
     ~PolyMesh();
@@ -76,17 +86,15 @@ public:
     
     // std::span<const Scalar, 3>, std::array, std::vector, raw arrays
     Index add_vertex(std::span<const Scalar, 3> Vert);
-
     // inline: mesh.add_vertex({1.0f, 2.0f, 3.0f});
     Index add_vertex(std::initializer_list<Scalar> Vert);
+    void  delete_vertex(Index Idx);
 
-    
-
-    void delete_vertex(Index Idx);
 
     Index add_face(std::span<const Index> Vertices);
     Index add_face(std::initializer_list<Index> Vertices);
-    void delete_face(Index Idx);
+    void  delete_face(Index Idx);
+
 
     [[nodiscard]] bool is_face_addable(std::span<const Index> Face);
 
@@ -97,6 +105,8 @@ public:
     std::tuple<Index, Index> flip(Index F0, Index F1);
 
     Index split(Index F, std::span<const Scalar, 3> P);
+
+    void collapse(Index To_Vertex, Index From_Vertex);
 
 // ----------------------------------------------------------------------------  
 // Helper Matrices
@@ -117,14 +127,19 @@ private:
     void _EF_build();
     void _EF_add_face(std::span<const Index> face, Index f_idx);
     void _EF_remove_face(std::span<const Index> face, Index face_idx);
+    void _EF_apply(const std::vector<std::tuple<Index,Index,Index>>& removes,
+                    const std::vector<std::tuple<Index,Index,Index>>& adds,
+                    const std::vector<std::tuple<Index,Index,Index>>& edits);
     
     void _VV_HE_build();
     void _VV_HE_add_face(std::span<const Index> face, Index f_idx);
     void _VV_HE_remove_face(std::span<const Index> face, Index face_idx);
+    void _VV_HE_apply(const std::vector<std::tuple<Index,Index,Index>>& removes, const std::vector<std::tuple<Index,Index,Index>>& adds);
     
     void _VF_build();
     void _VF_add_face(std::span<const Index> face, Index f_idx);
     void _VF_remove_face(std::span<const Index> face, Index face_idx);
+    void _VF_apply(const std::vector<std::tuple<Index,Index>>& removes, const std::vector<std::tuple<Index,Index>>& adds);
 // ----------------------------------------------------------------------------  
 };
 

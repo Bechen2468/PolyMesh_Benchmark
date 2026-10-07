@@ -579,41 +579,12 @@ void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
 
 
 template<PolyMesh::V3::TraitsC TraitsT>
-void Benchmark_PolyMesh_V03<TraitsT>::_temp_collapse_vertex(typename Mesh::Index From, typename Mesh::Index To) {
-    using Index = typename Mesh::Index;
-    const auto& vf_matrix = mesh.VF();
-    std::vector<Index> from_faces;
-    for(auto vf : vf_matrix.get_faces(From)) {
-        from_faces.push_back(vf);
-    }
-
-    for(Index fid : from_faces) {
-        auto row = mesh.faces()[fid];
-        bool has_to = false;
-        for(Index v : row) if(v == To) { has_to = true; break; }
-
-        if(has_to) {
-            mesh.delete_face(fid);
-        } else {
-            std::vector<Index> new_verts(row.begin(), row.end());
-            for(auto& v : new_verts) if(v == From) v = To;
-            mesh.delete_face(fid);
-            mesh.add_face(new_verts);
-        }
-    }
-
-    mesh.delete_vertex(From);
-}
-
-
-
-template<PolyMesh::V3::TraitsC TraitsT>
 void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
-    using Index = typename Mesh::Index;  
+    using Index = typename Mesh::Index;
 
     mesh.set_validate_modifications(false);
     mesh.set_update_VF(true);
-    //mesh.set_validate_modifications(true);
+    mesh.set_update_EF(false);
     
 
     auto& faces = mesh.faces();
@@ -632,66 +603,26 @@ void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
         typename Mesh::T::Vertex centroid = {0, 0, 0};
         for(Index vid : row) {
             auto p = mesh.vertices()[vid];
-            centroid[0] += p[0]; centroid[1] += p[1]; centroid[2] += p[2];
+            centroid[0] += p[0];
+            centroid[1] += p[1];
+            centroid[2] += p[2];
         }
-        centroid[0] /= n; centroid[1] /= n; centroid[2] /= n;
+        centroid[0] /= n;
+        centroid[1] /= n;
+        centroid[2] /= n;
 
         Index neighbor = row[0];
         Index new_v = mesh.split(fid, centroid);
         to_collapse.emplace_back(new_v, neighbor);
     }
 
-    Index max_v = mesh.vertices().capacity();
-    std::vector<std::vector<Index>> incident(max_v);
-    {
-        const auto& vf_matrix = mesh.VF();
-        for(auto v : mesh.vertices()) {
-            if(!mesh.vertices().is_valid(v.idx())) continue;
-            for(auto vf : vf_matrix.get_faces(v.idx())) {
-                incident[v.idx()].push_back(vf);
-            }
-        }
-    }
-
-    std::vector<bool> face_dead(faces.capacity(), false);
-
-    std::vector<std::vector<Index>> to_readd;
-
     for(auto [from, to] : to_collapse) {
-        to_readd.clear();
-
-        for(Index fid : incident[from]) {
-            if(face_dead[fid]) continue;
-
-            auto row = mesh.faces()[fid];
-            bool has_to = false;
-            for(Index v : row) if(v == to) { has_to = true; break; }
-
-            std::vector<Index> new_verts(row.begin(), row.end());
-            for(auto& v : new_verts) if(v == from) v = to;
-
-            mesh.delete_face(fid);
-            face_dead[fid] = true;
-
-            if(!has_to) {
-                to_readd.push_back(std::move(new_verts));
-            }
-        }
-
-        for(auto& verts : to_readd) {
-            Index new_fid = mesh.add_face(verts);
-            incident[to].push_back(new_fid);
-        }
-
-        mesh.delete_vertex(from);
+        mesh.collapse(to, from);
     }
 
     mesh.compact(false, false);
     //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
-
-
-
 
 
 

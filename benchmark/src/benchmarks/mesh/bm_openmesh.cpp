@@ -219,12 +219,12 @@ void Benchmark_OpenMesh_V11::_barycenter() {
     Mesh::VIter vit, vend=mesh.vertices_end();
     Mesh::Point p(0,0,0);
 
-    for (vit=mesh.vertices_begin(); vit!=vend; ++vit)
+   for(vit=mesh.vertices_begin(); vit!=vend; ++vit)
         p += mesh.point(vit);
 
     p /= mesh.n_vertices();
 
-    for (vit=mesh.vertices_begin(); vit!=vend; ++vit)
+    for(vit=mesh.vertices_begin(); vit!=vend; ++vit)
         mesh.point(vit) -= p;
 
     _benchmark_sink += p[0] + p[1] + p[2];
@@ -342,11 +342,12 @@ void Benchmark_OpenMesh_V11::_subdivision() {
             mesh.flip(eit);
 
     mesh.garbage_collection();
-
-    //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
 
 
+
+static std::chrono::nanoseconds _split{0};
+static std::chrono::nanoseconds _coll{0};
 
 void Benchmark_OpenMesh_V11::_collapse() {
     // reserve memory
@@ -363,20 +364,29 @@ void Benchmark_OpenMesh_V11::_collapse() {
 
     // split faces
     Mesh::Point p(0,0,0);
-    for (fit=mesh.faces_begin(); fit!=fend; ++fit)
+    for (fit=mesh.faces_begin(); fit!=fend; ++fit) {
+        //auto t0 = std::chrono::steady_clock::now();
         mesh.split(fit, p);
+        //auto t1 = std::chrono::steady_clock::now();
+        //_split += t1 - t0;
+    }
 
 
     // collapse new edges
     vit = vend; vend=mesh.vertices_end();
-    for (; vit!=vend; ++vit)
+    for (; vit!=vend; ++vit) {
+        //auto t0 = std::chrono::steady_clock::now();
         mesh.collapse(mesh.halfedge_handle(vit));
-
+        //auto t1 = std::chrono::steady_clock::now();
+        //_coll += t1 - t0;
+    }
 
     // remove deleted items
     mesh.garbage_collection();
     
     //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+    //std::cout << "split: " << _split.count()/1e6 << "ms  " << std::endl;
+    //std::cout << "collapse: " << _coll.count()/1e6 << "ms  " << std::endl;
 }
 
 

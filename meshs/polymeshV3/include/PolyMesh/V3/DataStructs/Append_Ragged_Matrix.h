@@ -3,35 +3,11 @@
 // ----------------------------------------------------------------------------
 #include <cstdint>
 #include "PolyMesh/V3/DataStructs/Aligned_Allocator.h"
+#include "PolyMesh/V3/DataStructs/Enablable_Queue.h"
 // ----------------------------------------------------------------------------
 
 
 namespace PolyMesh::V3 {
-
-    
-// ----------------------------------------------------------------------------
-// Queue Type
-// If set false:    removes the queue itself and never uses it ( for new assigned vs preexisting ids )
-// ----------------------------------------------------------------------------
-template<bool EnableT, typename IndexT>
-struct _Free_Id_Queue {
-    std::queue<IndexT> q;
-    [[nodiscard]] bool empty() const { return q.empty(); }
-    void pop() { q.pop(); }
-    [[nodiscard]] IndexT front() { return q.front(); }
-    void push(IndexT i) { q.push(i); }
-};
-
-
-template<typename IndexT>
-struct _Free_Id_Queue<false, IndexT> {
-    [[nodiscard]] bool empty() const { return true; }
-    void pop() {}
-    [[nodiscard]] IndexT front() { return IndexT{}; }
-    void push(IndexT) {}
-};
-
-
 
 
 
@@ -69,7 +45,7 @@ private:
     Vec<Data> _data;
     Vec<Row> _rows;
 
-    [[no_unique_address]] _Free_Id_Queue<ReuseIdsT, IndexT> _free_row_ids;
+    [[no_unique_address]] Enablable_Queue<ReuseIdsT, IndexT> _free_row_ids;
     Index _valid_count = 0;
 
     void _ensure_data_capacity(Index Needed_Size);
@@ -178,7 +154,7 @@ public:
         Index _idx = 0;
 
         void _skip_invalid() noexcept {
-            while (_idx < _matrix->row_count() && !_matrix->is_valid(_idx)) ++_idx;
+            while (_idx < _matrix->row_capacity() && !_matrix->is_valid(_idx)) ++_idx;
         }
 
     public:
@@ -200,9 +176,9 @@ public:
     using Const_Iter = RowIter<true>;
 
     [[nodiscard]] Iter begin() noexcept { return Iter(this, 0); }
-    [[nodiscard]] Iter end() noexcept { return Iter(this, row_count()); }
+    [[nodiscard]] Iter end() noexcept { return Iter(this, row_capacity()); }
     [[nodiscard]] Const_Iter begin() const noexcept { return Const_Iter(this, 0); }
-    [[nodiscard]] Const_Iter end() const noexcept { return Const_Iter(this, row_count()); }
+    [[nodiscard]] Const_Iter end() const noexcept { return Const_Iter(this, row_capacity()); }
 };
 
 

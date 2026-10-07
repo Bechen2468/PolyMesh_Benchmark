@@ -178,6 +178,54 @@ void PM::_EF_remove_face(std::span<const Index> face, Index face_idx) {
 
 
 
+PM_T
+void PM::_EF_apply(const std::vector<std::tuple<Index,Index,Index>>& removes,
+                    const std::vector<std::tuple<Index,Index,Index>>& adds,
+                    const std::vector<std::tuple<Index,Index,Index>>& edits) {
+    auto& ef = _relations.EF;
+
+    auto find_slot = [&](Index v0, Index v1) -> std::pair<Index,Index> {   // returns {canon_v0, slot}
+        Index a = v0, b = v1;
+        if(a > b) std::swap(a, b);
+        auto row = ef.get_edges(a);
+        for(Index k = 0; k < row.size(); ++k) if(row[k].v1 == b) return {a, k};
+        return {a, T::INDEX_INVALID};
+    };
+
+    for(auto& [v0, v1, fid] : removes) {
+        auto [a, slot] = find_slot(v0, v1);
+        if(slot == T::INDEX_INVALID) continue;
+        auto row = ef.get_edges(a);
+        if(row[slot].f_left == fid) row[slot].f_left = T::INDEX_INVALID;
+        if(row[slot].f_right == fid) row[slot].f_right = T::INDEX_INVALID;
+        if(row[slot].f_left == T::INDEX_INVALID && row[slot].f_right == T::INDEX_INVALID)
+            ef.edge_remove_swap(a, slot);
+    }
+
+    for(auto& [v0, v1, fid] : edits) {
+        auto [a, slot] = find_slot(v0, v1);
+        if(slot == T::INDEX_INVALID) continue;   // shouldn't happen for a genuine edit -- edge must already exist
+        auto row = ef.get_edges(a);
+        bool swapped = (v0 > v1);
+        if(swapped) row[slot].f_right = fid;
+        else        row[slot].f_left  = fid;
+    }
+
+    for(auto& [v0, v1, fid] : adds) {
+        bool swapped = (v0 > v1);
+        auto [a, slot] = find_slot(v0, v1);
+        if(slot == T::INDEX_INVALID) {
+            Index b = swapped ? v0 : v1;
+            typename T::EF::_Edge_Data new_edge{b, T::INDEX_INVALID, T::INDEX_INVALID};
+            slot = ef.edge_append(a, new_edge);
+        }
+        auto row = ef.get_edges(a);
+        if(swapped) row[slot].f_right = fid;
+        else        row[slot].f_left  = fid;
+    }
+}
+
+
 
 
 
@@ -255,6 +303,34 @@ void PM::_VV_HE_remove_face(std::span<const Index> face, Index face_idx) {
 
 
 
+PM_T
+void PM::_VV_HE_apply(const std::vector<std::tuple<Index,Index,Index>>& removes,
+                       const std::vector<std::tuple<Index,Index,Index>>& adds) {
+    auto& vv_he = _relations.VV_HE;
+
+    for (auto& [v0, v1, fid] : removes) {
+        auto row = vv_he.get_edges(v0);
+        for (Index k = 0; k < row.size(); ++k) {
+            if (row[k] == v1) { vv_he.edge_remove_swap(v0, k); break; }
+        }
+    }
+
+    for (auto& [v0, v1, fid] : adds) {
+        if (!vv_he.is_vertex_valid(v0)) vv_he.set_row_valid(v0);
+
+        auto row = vv_he.get_edges(v0);
+        bool exists = false;
+        for (Index k = 0; k < row.size(); ++k) {
+            if (row[k] == v1) { exists = true; break; }
+        }
+        if (exists) continue;
+
+        vv_he.edge_append(v0, v1);
+    }
+}
+
+
+
 
 
 
@@ -312,6 +388,28 @@ void PM::_VF_remove_face(std::span<const Index> face, Index face_idx) {
                 break;
             }
         }
+    }
+}
+
+
+
+PM_T
+void PM::_VF_apply(const std::vector<std::tuple<Index,Index>>& removes,
+                    const std::vector<std::tuple<Index,Index>>& adds) {
+    auto& vf = _relations.VF;
+
+    for (auto& [v0, fid] : removes) {
+        auto row = vf.get_faces(v0);
+        for (Index k = 0; k < row.size(); ++k) {
+            if (row[k] == fid) { vf.face_remove_swap(v0, k); break; }
+        }
+    }
+
+    for (auto& [v0, fid] : adds) {
+        if (!vf.is_vertex_valid(v0)) vf.set_row_valid(v0);
+        if (vf.vertex_is_next_to_face(v0, fid)) continue;
+
+        vf.face_append(v0, fid);
     }
 }
 

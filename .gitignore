@@ -1,6 +1,10 @@
 .vs/
 .vscode/
-build/
-build_Release/
 /.build
+build/
 /.build_Release
+build_Release/
+/.build-asan
+build-asan/
+venv/
+/.venv

@@ -55,6 +55,7 @@ target_link_libraries(PolyMesh_Benchmark PRIVATE
     PolyMesh::V3
     OpenMeshCore
     polymesh_pmp
+    igl::core
     benchmark::benchmark
     pthread
     quickhull
