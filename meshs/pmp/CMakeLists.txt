@@ -6,14 +6,33 @@ add_compile_definitions(_USE_MATH_DEFINES)
 #set(PMP_SCALAR_TYPE 64)
 #set(PMP_INDEX_TYPE 64)
 
-set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+set(EIGEN_BUILD_TESTING    OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_DOC        OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_PKGCONFIG  OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING          OFF CACHE BOOL "" FORCE)
+
+include(FetchContent)
+
+if(NOT DEFINED EIGEN3_INCLUDE_DIR)
+FetchContent_Declare(
+    eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG        3.4.0
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(eigen)
+endif()
+find_package(Eigen3 3.4.0 REQUIRED)
+
+
 
 set(PMP_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
 set(PMP_BUILD_VIEWERS    OFF CACHE BOOL "" FORCE)  # newer pmp versions: GLFW, GLAD, ImGui
 set(PMP_BUILD_VIS        OFF CACHE BOOL "" FORCE)
 set(PMP_BUILD_TESTS      OFF CACHE BOOL "" FORCE)
 set(PMP_BUILD_DOCS       OFF CACHE BOOL "" FORCE)
-set(PMP_INSTALL          OFF CACHE BOOL "" FORCE)
+#set(PMP_INSTALL          OFF CACHE BOOL "" FORCE)
 
 
 FetchContent_Declare(

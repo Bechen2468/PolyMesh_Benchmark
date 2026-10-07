@@ -20,10 +20,10 @@
 
 
 
-#define RANGE_START        500000
+#define RANGE_START        250000
 #define RANGE_END          RANGE_START
 #define RANGE_MULTIPLIER         4
-#define ITERATIONS              3
+#define ITERATIONS              2
 
 
 

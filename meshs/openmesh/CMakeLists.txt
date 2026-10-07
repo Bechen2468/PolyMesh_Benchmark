@@ -18,17 +18,21 @@ set(OPENMESH_TESTS             OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(OpenMesh)
 
 # Silence known OpenMesh warnings on modern GCC/Clang
-foreach(t
-    OpenMeshCore
-    OpenMeshTools
-    OpenMeshCoreStatic
-    OpenMeshToolsStatic
-)
-    if (TARGET ${t})
-        target_compile_options(${t} PRIVATE
-            -Wno-deprecated-enum-enum-conversion
-            -Wno-unused-result
-        )
-    endif()
-endforeach()
+if (NOT MSVC)
+    foreach(t
+        OpenMeshCore
+        OpenMeshTools
+        OpenMeshCoreStatic
+        OpenMeshToolsStatic
+    )
+        if (TARGET ${t})
+            target_compile_options(${t} PRIVATE
+                -Wno-deprecated-enum-enum-conversion
+                -Wno-unused-result
+            )
+        endif()
+    endforeach()
+endif()
+
+
 

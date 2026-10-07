@@ -48,6 +48,8 @@ target_include_directories(PolyMesh_Benchmark PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+find_package(Threads REQUIRED)
+
 
 target_link_libraries(PolyMesh_Benchmark PRIVATE
     PolyMesh::V1
@@ -57,7 +59,7 @@ target_link_libraries(PolyMesh_Benchmark PRIVATE
     polymesh_pmp
     igl::core
     benchmark::benchmark
-    pthread
+    Threads::Threads
     quickhull
 )
 # openmesh include bug fix
