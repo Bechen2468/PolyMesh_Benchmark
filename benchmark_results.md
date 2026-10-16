@@ -157,3 +157,25 @@ Apd_Ragged__/V03/Collapse/|V|:1000000/Full_Load:1    1725219 us      1725094 us 
 
 
 
+-----------------------------------------------------------------------
+Benchmark                                                          Time
+-----------------------------------------------------------------------
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:0/iterations:1     442474 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:1/iterations:1     685510 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:2/iterations:1     532131 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:3/iterations:1     504045 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:4/iterations:1     511361 us
+
+
+
+-----------------------------------------------------------------------
+Benchmark                                                          Time
+-----------------------------------------------------------------------
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:0/iterations:1     345839 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:1/iterations:1     515795 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:2/iterations:1     398586 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:3/iterations:1     398206 us
+Apd_Ragged__/V03/Load/|V|:300000/Full_Load:4/iterations:1     416519 us
+
+
+

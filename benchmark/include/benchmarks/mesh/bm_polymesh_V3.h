@@ -15,6 +15,7 @@ protected:
     using Mesh = PolyMesh::V3::PolyMesh<TraitsT>;
     Mesh mesh;
     Mesh mesh_storage;
+    bool VALIDATE_MESH = false;
 
     typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> vnormals;
     typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> fnormals;
@@ -24,10 +25,14 @@ protected:
         mesh_storage = Mesh();
         mesh_storage.read_file(FileName);
         
-        if(load_full == 1 || load_full == 2) mesh_storage.VV_HE();
-        if(load_full == 1 || load_full == 3) mesh_storage.VF();
-        if(load_full == 1 || load_full == 4) mesh_storage.EF();
+        // 1 for load full,  10 for run validation checks
+        if(load_full == 1 || load_full == 10 || load_full == 2) mesh_storage.VV_HE();
+        if(load_full == 1 || load_full == 10 || load_full == 3) mesh_storage.VF();
+        if(load_full == 1 || load_full == 10 || load_full == 4) mesh_storage.EF();
         if(load_full == 0) mesh_storage.relations().invalidate(PolyMesh::V3::CacheFlag::ALL);
+
+        // setting validation check flag
+        VALIDATE_MESH = load_full == 10;
 
         return {mesh_storage.n_vertices(), mesh_storage.n_faces(), 0};
     }
@@ -37,9 +42,10 @@ protected:
         mesh = mesh_storage;
         //mesh.set_validate_modifications(false);
 
-        if(load_full == 1 || load_full == 2) mesh.VV_HE();
-        if(load_full == 1 || load_full == 3) mesh.VF();
-        if(load_full == 1 || load_full == 4) mesh.EF();
+        // 1 for load full,  10 for run validation checks
+        if(load_full == 1 || load_full == 10 || load_full == 2) mesh.VV_HE();
+        if(load_full == 1 || load_full == 10 || load_full == 3) mesh.VF();
+        if(load_full == 1 || load_full == 10 || load_full == 4) mesh.EF();
         if(load_full == 0) mesh.relations().invalidate(PolyMesh::V3::CacheFlag::ALL);
     }
 

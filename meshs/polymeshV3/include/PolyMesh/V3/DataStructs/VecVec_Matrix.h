@@ -22,6 +22,7 @@ public:
     using Index = IndexT;
     static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
  
+// ----------------------------------------------------------------------------
     template<typename ViewT, typename ViewIndexT>
     class Row_View {
     public:
@@ -44,12 +45,26 @@ public:
         std::span<ViewT> _data;
         Index        _idx{};
     };
- 
+
     using View       = Row_View<T, IndexT>;
     using Const_View = Row_View<const T, IndexT>;
+// ----------------------------------------------------------------------------
  
-    Vec_Vec_Matrix(float /*Reserve_Perz*/ = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1)
-        : _row_reserve_perz(Row_Reserve_Perz), _row_reserve_min_amount(Row_Reserve_Min_Amount) {}
+    Vec_Vec_Matrix(float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1):
+        _row_reserve_perz(Row_Reserve_Perz), _row_reserve_min_amount(Row_Reserve_Min_Amount) {}
+ 
+    Vec_Vec_Matrix(const std::vector<Index>& Row_Sizes, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1):
+        _row_reserve_perz(Row_Reserve_Perz), _row_reserve_min_amount(Row_Reserve_Min_Amount) 
+    {
+        const std::size_t n = Row_Sizes.size();
+        _rows.resize(n);
+        for (std::size_t i = 0; i < n; ++i) {
+            _rows[i].reserve(_initial_row_reserve(Row_Sizes[i]));
+        }
+
+        _valid.assign(n, true);
+        _valid_count = static_cast<Index>(n);
+    }
  
     // -------- row access --------
     [[nodiscard]] View row(Index idx) noexcept {
@@ -187,6 +202,7 @@ public:
         _valid_count = valid;
     }
  
+// ----------------------------------------------------------------------------
     class Iter {
         Vec_Vec_Matrix* _m; Index _i;
         void skip() { while (_i < static_cast<Index>(_m->_rows.size()) && !_m->_valid[_i]) ++_i; }
@@ -196,6 +212,7 @@ public:
         Iter& operator++() { ++_i; skip(); return *this; }
         bool operator!=(const Iter& o) const { return _i != o._i; }
     };
+// ----------------------------------------------------------------------------
  
     class Const_Iter {
         const Vec_Vec_Matrix* _m; Index _i;
@@ -206,11 +223,13 @@ public:
         Const_Iter& operator++() { ++_i; skip(); return *this; }
         bool operator!=(const Const_Iter& o) const { return _i != o._i; }
     };
+// ----------------------------------------------------------------------------
  
     [[nodiscard]] Iter       begin()       noexcept { return Iter(this, 0); }
     [[nodiscard]] Iter       end()         noexcept { return Iter(this, static_cast<Index>(_rows.size())); }
     [[nodiscard]] Const_Iter begin() const noexcept { return Const_Iter(this, 0); }
     [[nodiscard]] Const_Iter end()   const noexcept { return Const_Iter(this, static_cast<Index>(_rows.size())); }
+// ----------------------------------------------------------------------------
  
 private:
 
@@ -240,7 +259,8 @@ private:
         ++_valid_count;
         return id;
     }
- 
+
+// ----------------------------------------------------------------------------
     float _row_reserve_perz;
     Index _row_reserve_min_amount;
  

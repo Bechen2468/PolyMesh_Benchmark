@@ -13,6 +13,30 @@ _row_reserve_min_amount(Row_Reserve_Min_Amount)
 
 
 ARM_T
+ARM::Append_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz, float Row_Reserve_Perz, Index Row_Reserve_Min_Amount):
+_reserve_Perz(Reserve_Perz),
+_row_reserve_perz(Row_Reserve_Perz),
+_row_reserve_min_amount(Row_Reserve_Min_Amount)
+{
+    _rows.resize(Row_Sizes.size());
+
+    Index data_size = 0;
+    for(Index i = 0; i < Row_Sizes.size(); ++i) {
+        // set row dimensions
+        const Index res = _initial_row_reserve(Row_Sizes[i]);
+        _rows[i] = Row{data_size, 0, res};
+        
+        // increase data size
+        data_size += res;
+    }
+    _data.reserve(data_size + static_cast<Index>(std::ceil(data_size * _reserve_Perz)));
+    _data.resize(data_size);
+    _valid_count = static_cast<Index>(Row_Sizes.size());
+}
+
+
+
+ARM_T
 void ARM::_ensure_data_capacity(Index Needed_Size) {
     if(Needed_Size > static_cast<Index>(_data.capacity())) {
         Index padded = Needed_Size + static_cast<Index>(Needed_Size * _reserve_Perz);

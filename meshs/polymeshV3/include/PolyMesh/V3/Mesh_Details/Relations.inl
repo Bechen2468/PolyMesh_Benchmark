@@ -91,18 +91,87 @@ const PM::T::EF& PM::EF() {
 
 PM_T
 void PM::_EF_build() {
-    const Index nv = n_vertices();
+// OLD:
+//    const Index nv = n_vertices();
+//
+//    // build sizes
+//    std::vector<Index> row_sizes(nv, 0);
+//    
+//
+//    _relations.EF = typename T::EF(T::Reserve_Perz);
+//    auto& ef = _relations.EF;
+//    ef.reserve(nv * 6);
+//    ef.set_largest_vertex_idx(_v.capacity());
+//
+//    for(auto f : _f) {
+//        _EF_add_face(f, f.idx());
+//    }
+//
+//    ef.compact({}, _COMPACT_RESERVE);
 
-    _relations.EF = typename T::EF(T::Reserve_Perz);
+
+    // Because 2 edges form one entry for EF, its acctual size is not as easy predictable as the other Matrices
+    // ( As edges cant be expected to always have 2 Faces adjacent )
+
+    // PART 1: Calculating acctual sizes
+    const Index cap = _v.capacity();
+
+    // 1. half-edges per smaller vertex (upper bound, duplicates included), shifted by one for the prefix sum
+    std::vector<Index> off(cap + 1, 0);
+    for(auto f : _f) {
+        const Index n = f.size();
+        for(Index i = 0; i < n; ++i) {
+            const Index a = f[i];
+            const Index b = f[(i + 1) % n];
+            if(a != b) ++off[std::min(a, b) + 1];
+        }
+    }
+
+    // 2. prefix sum: bucket of vertex v is other[off[v] .. off[v+1])
+    for(Index v = 0; v < cap; ++v) off[v + 1] += off[v];
+
+    // 3. write the larger vertex of every half-edge into the bucket of its smaller vertex
+    std::vector<Index> other(off[cap]);
+    {
+        std::vector<Index> pos(off.begin(), off.end() - 1);
+        for(auto f : _f) {
+            const Index n = f.size();
+            for(Index i = 0; i < n; ++i) {
+                const Index a = f[i];
+                const Index b = f[(i + 1) % n];
+                if(a != b) other[pos[std::min(a, b)]++] = std::max(a, b);
+            }
+        }
+    }
+
+    // 4. distinct partners per bucket = edges per row (mark[b] == v: already seen while handling v)
+    std::vector<Index> cnt(cap, 0);
+    std::vector<Index> mark(cap, T::INDEX_INVALID);
+
+    for(Index v = 0; v < cap; ++v) {
+        for(Index k = off[v]; k < off[v + 1]; ++k) {
+            const Index b = other[k];
+            if(mark[b] != v) {
+                mark[b] = v;
+                ++cnt[v];
+            }
+        }
+    }
+
+
+    // PART 2: And now that we have the acctual sizes ( cnt ), we rebuild EF from that and add faces as before in OLD
+    _relations.EF = typename T::EF(cnt, T::Reserve_Perz);
     auto& ef = _relations.EF;
-    ef.reserve(nv * 6);
-    ef.set_largest_vertex_idx(_v.capacity());
+
+    // the constructor makes every row valid; deleted vertices must stay invalid like in the old build
+    for(Index v = 0; v < _v.capacity(); ++v) {
+        if(!_v.is_valid(v)) ef.set_row_invalid(v);
+    }
 
     for(auto f : _f) {
         _EF_add_face(f, f.idx());
     }
-
-    ef.compact({}, _COMPACT_RESERVE);
+    // no compact needed: we precalculated the acctual sizes
 }
 
 
@@ -233,20 +302,44 @@ void PM::_EF_apply(const std::vector<std::tuple<Index,Index,Index>>& removes,
 
 PM_T
 void PM::_VV_HE_build() {
+// OLD
+//    const Index nv = n_vertices();
+//    const INdex nf = n_faces();
+//
+//    _relations.VV_HE = typename T::VV_HE(T::Reserve_Perz);
+//    auto& vv_he = _relations.VV_HE;
+//    vv_he.reserve(nv * 6);
+//    vv_he.set_largest_vertex_idx(_v.capacity());
+//
+//    _edge_count = 0;    // rebuilding
+//
+//    for(auto f : _f) {
+//        _VV_HE_add_face(f, f.idx());
+//    }
+//
+//    vv_he.compact({}, _COMPACT_RESERVE);
+
+
+
     const Index nv = n_vertices();
 
-    _relations.VV_HE = typename T::VV_HE(T::Reserve_Perz);
-    auto& vv_he = _relations.VV_HE;
-    vv_he.reserve(nv * 6);
-    vv_he.set_largest_vertex_idx(_v.capacity());
-
+    // Collection acctual row sizes
     _edge_count = 0;    // rebuilding
+    std::vector<Index> row_sizes(nv, 0);
+
+    for(auto f : _f) {
+        for(Index iv = 0; iv < f.size(); ++iv) {
+            row_sizes[f[iv]]++;
+            _edge_count++;
+        }
+    }
+
+    // Building VV_HE
+    _relations.VV_HE = typename T::VV_HE(row_sizes, T::Reserve_Perz);
 
     for(auto f : _f) {
         _VV_HE_add_face(f, f.idx());
     }
-
-    vv_he.compact({}, _COMPACT_RESERVE);
 }
 
 
@@ -266,7 +359,10 @@ void PM::_VV_HE_add_face(std::span<const Index> face, Index face_idx) {
 
         bool exists = false;
         for(Index k = 0; k < row.size(); ++k) {
-            if(row[k] == v1) { exists = true; break; }
+            if(row[k] == v1) { 
+                exists = true; 
+                break; 
+            }
         }
         if(exists) continue;
 
@@ -338,18 +434,25 @@ void PM::_VV_HE_apply(const std::vector<std::tuple<Index,Index,Index>>& removes,
 
 PM_T
 void PM::_VF_build() {
-    const Index nf = n_faces();
+    const Index nv = n_vertices();
 
-    _relations.VF = typename T::VF(T::Reserve_Perz);
-    auto& vf = _relations.VF;
-    vf.reserve(nf * 3);
-    vf.set_largest_vertex_idx(_v.capacity());
+    // Collection acctual row sizes
+    _edge_count = 0;    // rebuilding
+    std::vector<Index> row_sizes(nv, 0);
+
+    for(auto f : _f) {
+        for(Index iv = 0; iv < f.size(); ++iv) {
+            row_sizes[f[iv]]++;
+            _edge_count++;
+        }
+    }
+
+    // Building VF
+    _relations.VF = typename T::VF(row_sizes, T::Reserve_Perz);
 
     for(auto f : _f) {
         _VF_add_face(f, f.idx());
     }
-
-    vf.compact({}, _COMPACT_RESERVE);
 }
 
 

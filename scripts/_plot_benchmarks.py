@@ -31,33 +31,51 @@ BASELINE_SYSTEM = "OpenMesh"
 SYSTEM_LABELS = {
     "OpenMesh____": "OpenMesh",
     "SurfaceMesh_": "SurfaceMesh",
+    "Libigl______": "Libigl",
     "D_Ragged____": "PM-Reuse-Ragged",
     "Apd_Ragged__": "PM-Append-Ragged",
     "VecVec______": "PM-VecVec",
+    "Vec_Eigen___": "PM-VecEigen",
+    "Apd_Ragged_V": "PM-Validate",
 }
+SYSTEM_ORDER = list(SYSTEM_LABELS.values())
 
 # Full_Load numeric value -> display label for the Load benchmark's x-axis.
 FULL_LOAD_LABELS = {
     0: "Core Only",
-    1: "Full",
     2: "VV-HE",
     3: "VF",
     4: "EF",
+    1: "Full",
+    10: "VALIDATE",
 }
 
 # Consistent color per system across every figure.
+# SYSTEM_COLORS = {
+#     "OpenMesh": "#595959",
+#     "SurfaceMesh": "#f0c571",
+#     "Libigl": "#008dff",
+#     "PM-Reuse-Ragged": "#9d2c00",
+#     "PM-Append-Ragged": "#0b81a2",
+#     "PM-VecVec": "#e25759",
+#     "PM-VecEigen": "#7E4794",
+#     "PM-Validate": "#36b700",
+# }
 SYSTEM_COLORS = {
-    "OpenMesh": "#4C72B0",
-    "SurfaceMesh": "#DD8452",
-    "PM-Reuse-Ragged": "#55A868",
-    "PM-Append-Ragged": "#C44E52",
-    # "PM-VecVec": "#8172B2",
+    "OpenMesh":         "#595959",   # neutral baseline
+    "SurfaceMesh":      "#2a78d6",   # blue
+    "Libigl":           "#eb6834",   # orange
+    "PM-Reuse-Ragged":  "#1baf7a",   # aqua
+    "PM-Append-Ragged": "#eda100",   # yellow
+    "PM-VecVec":        "#e87ba4",   # magenta
+    "PM-VecEigen":      "#008300",   # green
+    "PM-Validate":      "#6250d6",   # violet
 }
 
 DEFAULT_COLOR_CYCLE = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
 # For every operation EXCEPT "Load", only this Full_Load value is plotted.
-REPRESENTATIVE_FULL_LOAD = 1
+REPRESENTATIVE_FULL_LOAD = [1, 10]
 
 # ----------------------------------------------------------------------
 # Plot appearance
@@ -155,6 +173,16 @@ def load_entries(json_paths):
 # ----------------------------------------------------------------------
 # Plot helpers
 # ----------------------------------------------------------------------
+
+def order_systems(systems):
+    return sorted(
+        systems,
+        key=lambda s: (
+            SYSTEM_ORDER.index(s) if s in SYSTEM_ORDER else len(SYSTEM_ORDER),
+            s,
+        ),
+    )
+
 
 def plain_number(value, _pos=None):
     """Compact numeric formatting for axis labels."""
@@ -319,19 +347,19 @@ def plot_operation(operation, entries, out_dir):
     subset = [
         e
         for e in entries
-        if e["full_load"] == REPRESENTATIVE_FULL_LOAD
+        if e["full_load"] in REPRESENTATIVE_FULL_LOAD
     ]
 
     baseline_time = get_baseline_time(
         subset,
-        REPRESENTATIVE_FULL_LOAD,
+        REPRESENTATIVE_FULL_LOAD[0],
     )
 
     if baseline_time is None:
         print(f"  [skip] {operation}: no baseline entry found")
         return
 
-    other_systems = sorted(
+    other_systems = order_systems(
         {
             e["system"]
             for e in subset
@@ -359,7 +387,7 @@ def plot_operation(operation, entries, out_dir):
 
         if matches:
             speedups.append(
-                baseline_time / matches[0]["time"]
+                matches[0]["time"] / baseline_time
             )
         else:
             speedups.append(np.nan)
@@ -377,6 +405,9 @@ def plot_operation(operation, entries, out_dir):
         OPERATION_WIDTH_PER_SYSTEM * len(systems)
         + OPERATION_EXTRA_WIDTH,
     )
+
+    # DEBUG
+    print("   plot", operation, systems, [round(s, 3) for s in speedups])
 
     fig, ax = plt.subplots(
         figsize=(fig_width, OPERATION_FIG_HEIGHT)
@@ -469,7 +500,7 @@ def plot_load(entries, out_dir):
         }
     )
 
-    other_systems = sorted(
+    other_systems = order_systems(
         {
             e["system"]
             for e in subset
@@ -546,7 +577,7 @@ def plot_load(entries, out_dir):
                 and matches
             ):
                 speedups.append(
-                    baseline_time / matches[0]["time"]
+                    matches[0]["time"] /baseline_time
                 )
             else:
                 speedups.append(np.nan)
@@ -700,6 +731,9 @@ def main():
             ],
             OUTPUT_DIR,
         )
+    
+    for op in ("Subdivision", "Collapse"):
+        print(op, sorted({(e["system"], e["full_load"]) for e in entries if e["operation"] == op}))
 
 
 if __name__ == "__main__":

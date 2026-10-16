@@ -8,6 +8,7 @@
 #include <cassert>
 #include <Eigen/Dense>
 #include "PolyMesh/V3/DataStructs/Aligned_Allocator.h"
+#include "PolyMesh/V3/DataStructs/Enablable_Queue.h"
 // ----------------------------------------------------------------------------
 
 
@@ -15,290 +16,245 @@
 namespace PolyMesh::V3 {
 
 
-template<typename DataT, typename IndexT = std::uint32_t, typename FastBlockSizeT = uint8_t>
+ template<typename DataT, typename IndexT = std::uint32_t, bool ReuseIdsT = true, typename FastBlockSizeT = std::uint32_t>
 struct D_Ragged_Matrix {
 // ----------------------------------------------------------------------------
 // Core Structs
 // ----------------------------------------------------------------------------
+public:
     using Index = IndexT;
-
+    using Data  = DataT;
+ 
     template<typename T>
-    //using Vec = std::vector<T>;
     using Vec = std::vector<T, Aligned_Allocator<T, 64>>;
-
+ 
+    static_assert(std::is_integral_v<IndexT> && std::is_unsigned_v<IndexT>, "Index must be an unsigned integer type");
+    static_assert(std::is_trivially_copyable_v<DataT> && sizeof(DataT) >= sizeof(IndexT), "free blocks store their record id inside the free slots");
+    static_assert(std::is_unsigned_v<FastBlockSizeT>, "FastBlockSizeT is used as a bitmask");
+ 
     static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
-    static constexpr uint8_t FAST_BLOCK_SIZE = sizeof(FastBlockSizeT) * 8;
+    static constexpr Index SMALL_BINS    = static_cast<Index>(sizeof(FastBlockSizeT) * 8);   // exact-size bins 1..SMALL_BINS
+ 
 
-    
     struct Row {
         Index begin;
         Index size;
-        Index reserve = 0;
+        Index reserve;
     };
-
-    struct FreeBlocks {
-    private:
-        struct FreeBlock {
-            Index begin;
-            Index size;
-            
-            // linked-list handles for the Size Bins
-            Index bin_next = INDEX_INVALID;
-            Index bin_prev = INDEX_INVALID;
-            bool  in_bin   = false;
-        };
-
-        struct SizeBins {
-            // Direct access bins for exact sizes (e.g., Bin 0 = size 1, Bin 1 = size 2, etc.)
-            // Storing just the index of the first FreeBlock in _free_blocks
-            std::array<Index, FAST_BLOCK_SIZE> small_bins; 
-
-            // fallback map for large polygons (size > FastBlockSizeT)
-            // Key: block size, Value: index of the first FreeBlock in _free_blocks
-            std::map<Index, Index> large_bins;
-
-            // bitmask tracking which small bins are populated (1 = has free blocks)
-            FastBlockSizeT small_bins_bitmask = 0; 
-
-            SizeBins() {
-                small_bins.fill(INDEX_INVALID);
-            }
-        };
-
-    private:
-        // All blocks, ordered sequentially by their physical location in mem
-        Vec<FreeBlock> _free_blocks;
-        SizeBins _bins = SizeBins();
-        Vec<Index> _dataIdx_to_free_block_idx;  // Holds a id to its free block in _freeblocks or INVALID for each "_blocks"
-
-    public:
-        // to resize parallel to the matrix blocks itself
-        void resize(Index Size);
-
-        Row try_get_row(Index Size);
-        bool try_extend(Index Data_End, Index Extra);
-        void free_row(const Row& row);
-
-        void remove_from_size_bin(Index F_Block_Idx);
-        void insert_into_size_bin(Index F_Block_Idx);
-        void delete_free_block_element(Index F_Block_Idx);
-
-        int debug_validate() const;
+ 
+private:
+    struct FreeBlock {
+        Index begin;
+        Index size;
+        Index next;
+        Index prev;
     };
-
-
-
+ 
+ 
 // ----------------------------------------------------------------------------
-// Iterators: RowView
+// Iterators: Row_View
 // ----------------------------------------------------------------------------
-    template<bool IsConst>
-    struct RowViewImpl {
-        using ElementType = std::conditional_t<IsConst, const DataT, DataT>;
-
-        // cpp20 algo defines
-        using pointer     = ElementType*;
-        using reference   = ElementType&;
-        // Element Iterator inside this row
-        using iterator       = pointer; 
-        using const_iterator = const DataT*;
-
+public:
+    template<bool IsConstT>
+    struct Row_View {
+        using ElementType = std::conditional_t<IsConstT, const DataT, DataT>;
+        using pointer = ElementType*;
+ 
     private:
         pointer _data = nullptr;
-        Index _size = 0;
-        Index _row_Idx = 0;
-
+        Index   _size = 0;
+        Index   _idx  = 0;
+ 
     public:
-        RowViewImpl() = default;
-        RowViewImpl(pointer Data, Index Size, Index Row_Idx) noexcept:
-            _data(Data),
-            _size(Size),
-            _row_Idx(Row_Idx)
-        {}
-
-        [[nodiscard]] inline reference operator[](Index Idx) const noexcept { return _data[Idx]; }
-
-        [[nodiscard]] inline Index  size() const noexcept { return _size; }
-        [[nodiscard]] inline pointer data() const noexcept { return _data; }
-        [[nodiscard]] inline Index  idx()  const noexcept { return _row_Idx; }
-
-
-        [[nodiscard]] inline pointer begin() const noexcept { return _data; }
-        [[nodiscard]] inline pointer end()   const noexcept { return _data + _size; }
-
-        [[nodiscard]] inline std::span<ElementType> to_span() const noexcept { return {_data, static_cast<size_t>(_size)}; }
-
-
-        // Zero copy Eigen vector mapping for faster math
-        using EigenMap = Eigen::Map<
-            std::conditional_t<IsConst, 
-            const Eigen::Matrix<DataT, Eigen::Dynamic, 1>, 
-            Eigen::Matrix<DataT, Eigen::Dynamic, 1>>
-        >;
-
-        [[nodiscard]] EigenMap to_eigen() const noexcept {
-            return EigenMap(_data, static_cast<Eigen::Index>(_size));
-        }
+        Row_View() = default;
+        Row_View(pointer Data, Index Size, Index Idx) noexcept: _data(Data), _size(Size), _idx(Idx) {}
+ 
+        [[nodiscard]] ElementType& operator[](Index i) const noexcept { return _data[i]; }
+        [[nodiscard]] Index   size() const noexcept { return _size; }
+        [[nodiscard]] pointer data() const noexcept { return _data; }
+        [[nodiscard]] Index   idx()  const noexcept { return _idx; }
+ 
+        [[nodiscard]] pointer begin() const noexcept { return _data; }
+        [[nodiscard]] pointer end()   const noexcept { return _data + _size; }
+ 
+        [[nodiscard]] std::span<ElementType> to_span() const noexcept { return {_data, static_cast<std::size_t>(_size)}; }
     };
-
-    using RowView = RowViewImpl<false>;
-    using Const_RowView = RowViewImpl<true>;
-    
-
-
+ 
+    using View       = Row_View<false>;
+    using Const_View = Row_View<true>;
+ 
+ 
 // ----------------------------------------------------------------------------
-// Iterators: RowIterator
+// Iterators: RowIter (valid rows only)
 // ----------------------------------------------------------------------------
-    template<bool IsConst>
-    struct RowIteratorImpl {
-    public:
-        using MatrixPtr         = std::conditional_t<IsConst, const D_Ragged_Matrix*, D_Ragged_Matrix*>;
-
-        // cpp20 algo defines
+    template<bool IsConstT>
+    struct RowIter {
+        using MatrixPtr = std::conditional_t<IsConstT, const D_Ragged_Matrix*, D_Ragged_Matrix*>;
+ 
         using iterator_category = std::forward_iterator_tag;
         using iterator_concept  = std::forward_iterator_tag;
-        using value_type        = RowViewImpl<IsConst>;
-        using reference         = RowViewImpl<IsConst>;
-
+        using value_type        = Row_View<IsConstT>;
+        using reference         = Row_View<IsConstT>;
+ 
     private:
         MatrixPtr _matrix = nullptr;
-        Index _row_idx = 0;
-
+        Index     _idx    = 0;
+ 
+        void _skip_invalid() noexcept {
+            while (_idx < _matrix->row_capacity() && !_matrix->is_valid(_idx)) ++_idx;
+        }
+ 
     public:
-        RowIteratorImpl() = default;
-        RowIteratorImpl(MatrixPtr matrix, Index row_idx) noexcept: 
-            _matrix(matrix), 
-            _row_idx(row_idx) 
-        {}
-
-        // Returns RowView directly (Zero copy)
-        [[nodiscard]] reference operator*() const noexcept { return _matrix->row(_row_idx); }
-
-        RowIteratorImpl& operator++() noexcept { 
-            ++_row_idx;
-            while(_row_idx < _matrix->row_count() && !_matrix->is_valid(_row_idx)) ++_row_idx; 
-            return *this; 
-        }
-        RowIteratorImpl operator++(int) noexcept { 
-            auto tmp = *this; 
-            ++_row_idx;
-            while(_row_idx < _matrix->row_count() && !_matrix->is_valid(_row_idx)) ++_row_idx; 
-            return tmp; 
-        }
-
-        [[nodiscard]] bool operator==(const RowIteratorImpl& other) const noexcept { return _row_idx == other._row_idx; }
-
-        [[nodiscard]] Index index() const noexcept { return _row_idx; }
+        RowIter() = default;
+        RowIter(MatrixPtr M, Index Idx) noexcept: _matrix(M), _idx(Idx) { _skip_invalid(); }
+ 
+        [[nodiscard]] reference operator*() const noexcept { return _matrix->row(_idx); }
+        RowIter& operator++() noexcept { ++_idx; _skip_invalid(); return *this; }
+        RowIter  operator++(int) noexcept { auto t = *this; ++(*this); return t; }
+ 
+        [[nodiscard]] bool  operator==(const RowIter& o) const noexcept { return _idx == o._idx; }
+        [[nodiscard]] Index index() const noexcept { return _idx; }
     };
-
-    using RowIter = RowIteratorImpl<false>;
-    using Const_RowIter = RowIteratorImpl<true>;
-
-
+ 
+    using Iter       = RowIter<false>;
+    using Const_Iter = RowIter<true>;
+ 
+ 
 // ----------------------------------------------------------------------------
 // Variables
 // ----------------------------------------------------------------------------
 private:
     // Settings
     float _reserve_perz;
-    float _row_reserve_perz = 0.34f;
-    Index _row_reserve_min_amount = 1;
-
+    float _row_reserve_perz;
+    Index _row_reserve_min_amount;
+ 
     // Data
-    Vec<DataT> _data;
-    Vec<Row> _rows;
-    Vec<Index> _id_to_rawId;
-    Vec<Index> _rawId_to_id;
-
-    FreeBlocks _free_blocks_manager;
-
-    
+    Vec<Data> _data;
+    Vec<Row>  _rows;
+    Index     _valid_count = 0;
+    Enablable_Queue<ReuseIdsT, IndexT> _free_row_ids;
+ 
+    // Free space
+    Vec<FreeBlock>                                _fb;                // free block records
+    std::vector<Index>                            _fb_unused;         // recycled record ids
+    std::array<Index, sizeof(FastBlockSizeT) * 8> _small_head;        // exact-size bins 1..SMALL_BINS
+    FastBlockSizeT                                _small_mask = 0;    // bit s-1 set: bin s not empty
+    std::map<Index, Index>                        _large_head;        // size -> first block (sizes > SMALL_BINS)
+    std::vector<std::uint64_t>                    _edge_bits;         // bit x: slot x is the first or last slot of a free block
+ 
+ 
 // ----------------------------------------------------------------------------
 // Functions
 // ----------------------------------------------------------------------------
 public:
-    // Reserve_Size     = Amount of dataT to reserve
-    // Reserve_Perz     = Perzentage to extra reserve when running out of space
-    D_Ragged_Matrix(const Index Reserve_Size = 0, float Reserve_Perz = 0.2);
-    D_Ragged_Matrix(std::vector<std::vector<DataT>> Data, float Reserve_Perz = 0.2);
-    D_Ragged_Matrix(Vec<DataT>&& Data, Vec<Row>&& Rows, Vec<Index>&& Id_to_rawId, Vec<Index>&& RawId_to_id, float Reserve_Perz = 0.2);
-    D_Ragged_Matrix(const D_Ragged_Matrix<DataT, Index, FastBlockSizeT>& other);
-    D_Ragged_Matrix(D_Ragged_Matrix<DataT, Index, FastBlockSizeT>&& other) noexcept;
+    D_Ragged_Matrix(float Reserve_Perz = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1);
+ 
+    // Row_Sizes.size() valid, EMPTY rows laid out back to back; a free block of Reserve_Perz * total sits behind them
+    explicit D_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2f,
+                             float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1);
+ 
+    // Data_Size: wanted number of slots in the pool; the new part becomes free space
+    void reserve(Index Data_Size);
+ 
+    Index add_row(std::span<const DataT> Row_Data);
+    Index add_row(Index Size);
+    void  reinit_row(Index Idx);
+    void  resize_row(Index Idx, Index Size);
+ 
+    // Count = number of row slots that must exist afterwards; new slots are invalid
+    void grow_row_count(Index Count);
+ 
+    void set_valid(Index Idx);
+    void set_invalid(Index Idx);
+ 
+    void  row_remove_swap(Index Idx, Index Slot_Idx);
+    Index row_append(Index Idx, const DataT& Value);
+ 
     
-    void reserve(const Index Data_Size);
-    void reserve_row(const Index row_reserve_size);
-    inline Index row_reserve_size(const Index Row_Idx) const;
-    void grow_row_count(const Index Row_Amount);
-
+    void compact(std::span<const Index> Old_To_New = {}, bool Rebuild_Reserve = true);
+ 
+    [[nodiscard]] bool  is_valid(Index Idx) const     { return _rows[Idx].begin != INDEX_INVALID; }
+    [[nodiscard]] Index row_capacity() const          { return static_cast<Index>(_rows.size()); }
+    [[nodiscard]] Index row_count() const             { return _valid_count; }
+    [[nodiscard]] Index row_size(Index Idx) const     { return _rows[Idx].size; }
+    [[nodiscard]] Index row_reserve(Index Idx) const  { return _rows[Idx].reserve; }
+ 
+    // Free-space stats
+    [[nodiscard]] Index       pool_size() const        { return _pool_size(); }
+    [[nodiscard]] Index       free_block_count() const { return static_cast<Index>(_fb.size() - _fb_unused.size()); }
+    [[nodiscard]] Index       free_slot_count() const;
+    [[nodiscard]] std::size_t memory_bytes() const;
+ 
     
-    inline void delete_row(const Index Row_Idx);           // shifts _id_to_rawId
-    inline void reinit_row(const Index Row_Idx);
-    inline Index append_row(std::span<const DataT> Data); 
-
-    inline Index row_append(const Index Row_Idx, const DataT& Value);
-    inline void row_remove_swap(const Index Row_Idx, const Index Slot_Idx);
-
-    inline void row_resize(const Index Row_Idx, const Index Size);
-
-    inline Index row_count() const;
-    inline Index row_capacity() const { return _id_to_rawId.size(); };
-    inline Index row_size(const Index Row_Idx) const;
-
-    inline bool is_valid(const Index Row_Idx) const;
-    
+    [[nodiscard]] int debug_validate() const;
+ 
+ 
 // ----------------------------------------------------------------------------
-// Getter
+// Old D_Ragged names (for existing calls)
 // ----------------------------------------------------------------------------
-    [[nodiscard]] DataT& get(const Index Row_RawIdx, const Index Data_Idx);
-    [[nodiscard]] Const_RowView get_row(Index Idx) const;
-    [[nodiscard]] Vec<DataT>& get_data() { return _data; };
-    [[nodiscard]] Vec<Row>& get_rows() { return _rows; };
-    [[nodiscard]] Vec<Index>& get_id_to_rawId() { return _id_to_rawId; };
-    [[nodiscard]] Vec<Index>& get_rawId_to_id() { return _rawId_to_id; };
-
-
+    void  delete_row(Index Idx)                     { set_invalid(Idx); }
+    Index append_row(std::span<const DataT> Data)   { return add_row(Data); }
+    void  row_resize(Index Idx, Index Size)         { resize_row(Idx, Size); }
+    void  reserve_row(Index Row_Reserve_Min_Amount) { _row_reserve_min_amount = Row_Reserve_Min_Amount; }
+    [[nodiscard]] Index      row_reserve_size(Index Idx) const { return row_reserve(Idx); }
+    [[nodiscard]] Const_View get_row(Index Idx) const          { return row(Idx); }
+ 
+ 
 // ----------------------------------------------------------------------------
-// Operator
+// Getter / Iteration
 // ----------------------------------------------------------------------------
-    D_Ragged_Matrix& operator=(const D_Ragged_Matrix<DataT, Index, FastBlockSizeT>& other);
-    D_Ragged_Matrix& operator=(D_Ragged_Matrix<DataT, Index, FastBlockSizeT>&& other) noexcept;
-
-
-
-    
-    [[nodiscard]] RowView row(Index Idx) noexcept { 
-        Row b = _rows[_id_to_rawId[Idx]];
-        return RowView(_data.data() + b.begin, b.size, Idx); 
+    [[nodiscard]] View row(Index Idx) noexcept {
+        const Row& r = _rows[Idx];
+        return View(_data.data() + r.begin, r.size, Idx);
     }
-
-    [[nodiscard]] Const_RowView row(Index Idx) const noexcept { 
-        Row b = _rows[_id_to_rawId[Idx]];
-        return Const_RowView(_data.data() + b.begin, b.size, Idx); 
+    [[nodiscard]] Const_View row(Index Idx) const noexcept {
+        const Row& r = _rows[Idx];
+        return Const_View(_data.data() + r.begin, r.size, Idx);
     }
-
-
-    [[nodiscard]] RowIter begin() noexcept { 
-        Index first_valid = 0;
-        while (first_valid < row_count() && !is_valid(first_valid)) {
-            ++first_valid;
-        }
-        return RowIter(this, first_valid);
-    }
-
-    [[nodiscard]] RowIter end() noexcept { return RowIter(this, row_count()); }
-
-
-    [[nodiscard]] Const_RowIter begin() const noexcept { 
-        Index first_valid = 0;
-        while (first_valid < row_count() && !is_valid(first_valid)) {
-            ++first_valid;
-        }
-        return Const_RowIter(this, first_valid);
-    }
-
-    [[nodiscard]] Const_RowIter end() const noexcept { return Const_RowIter(this, row_count()); }
+ 
+    [[nodiscard]] Iter       begin() noexcept       { return Iter(this, 0); }
+    [[nodiscard]] Iter       end() noexcept         { return Iter(this, row_capacity()); }
+    [[nodiscard]] Const_Iter begin() const noexcept { return Const_Iter(this, 0); }
+    [[nodiscard]] Const_Iter end() const noexcept   { return Const_Iter(this, row_capacity()); }
+ 
+ 
+// ----------------------------------------------------------------------------
+// Internal
+// ----------------------------------------------------------------------------
+private:
+    [[nodiscard]] Index _pool_size() const { return static_cast<Index>(_data.size()); }
+    [[nodiscard]] Index _initial_row_reserve(Index Requested_Size) const;
+    [[nodiscard]] Index _grown_row_reserve(Index Old_Reserve, Index Needed_Size) const;
+ 
+    Index _place_row(const Row& R);
+    void  _grow_row(Index Idx, Index Needed);
+    void  _resize_pool(Index N);
+ 
+    // edge bits + in-place tags
+    [[nodiscard]] bool _bit(Index x) const { return (_edge_bits[x >> 6] >> (x & 63)) & 1u; }
+    void _set_bit(Index x) { _edge_bits[x >> 6] |=  (std::uint64_t(1) << (x & 63)); }
+    void _clr_bit(Index x) { _edge_bits[x >> 6] &= ~(std::uint64_t(1) << (x & 63)); }
+    void _write_tag(Index x, Index Id);
+    void _mark(Index Id);
+    void _unmark(Index Id);
+    [[nodiscard]] Index _tag(Index x) const;
+    [[nodiscard]] bool  _is_free_start(Index Pos) const { return _bit(Pos) && _fb[_tag(Pos)].begin == Pos; }
+ 
+    // free block records + size bins
+    Index _new_record(Index Begin, Index Size);
+    void  _drop_record(Index Id);
+    void  _bin_insert(Index Id);
+    void  _bin_remove(Index Id);
+ 
+    // free space operations
+    [[nodiscard]] Index _find_fit(Index N) const;
+    Index _take(Index N);
+    bool  _try_extend(Index End, Index Extra);
+    void  _free_span(Index Begin, Index Size);
+    void  _reset_free_space();
 };
-
-
+ 
 };
 #include "PolyMesh/V3/DataStructs/D_Ragged_Matrix.inl"
 #endif

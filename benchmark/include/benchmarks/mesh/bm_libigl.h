@@ -43,9 +43,11 @@ protected:
             throw std::runtime_error("libigl: failed to read " + FileName);
         }
 
+        std::cout << "Libigl Mem usage: " << V_storage.size() * sizeof(Scalar) + F_storage.size()*sizeof(int) << std::endl;
+
         // n_edges
         Eigen::MatrixXi E;
-        igl::edges(F_storage, E);
+        //igl::edges(F_storage, E);
 
         return {(size_t)V_storage.rows(), (size_t)F_storage.rows(), (size_t)E.rows()};
     }
@@ -53,9 +55,6 @@ protected:
     void load_mesh_from_storage(int load_full) override {
         V = V_storage;   // deep copy
         F = F_storage;
-
-        N_V.resize(V.rows(), 3);
-        N_F.resize(F.rows(), 3);
     }
 
     void destroy_mesh() override { _clear_all(); }

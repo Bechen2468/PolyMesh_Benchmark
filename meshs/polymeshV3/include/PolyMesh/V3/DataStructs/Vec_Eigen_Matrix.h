@@ -55,7 +55,33 @@ public:
     // Reserve_Perz: spare capacity at the back (shared array and row table). Row_Reserve_*: per-row reserve, as in Append.
     Vec_Eigen_Matrix(float Reserve_Perz = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1)
         : _reserve_perz(Reserve_Perz), _row_reserve_perz(Row_Reserve_Perz), _row_reserve_min_amount(Row_Reserve_Min_Amount) {}
+
+
+    Vec_Eigen_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1)
+        : Vec_Eigen_Matrix(Reserve_Perz, Row_Reserve_Perz, Row_Reserve_Min_Amount)
+    {
+        const Index n = static_cast<Index>(Row_Sizes.size());
+        if (n == 0) return;
+
+        _sp.resize(n, 1);
+        _sp.uncompress();
+        SIdx* o  = _outer();
+        SIdx* nz = _nnz();
+        SIdx pos = 0;
+        for (Index i = 0; i < n; ++i) {
+            o[i]  = pos;
+            nz[i] = 0;
+            pos  += static_cast<SIdx>(_initial_row_reserve(Row_Sizes[i]));
+        }
+        o[n] = pos;
+        _sp.data().resize(static_cast<typename Sp::Index>(pos), static_cast<double>(_reserve_perz));
+
+        _slots = n;
+        _valid.assign(n, true);
+        _valid_count = n;
+    }
  
+
     // Copy must NOT go through Eigen::SparseMatrix::operator=: that treats the matrix as a real sparse matrix and
     // requires sorted inner indices, which this class never fills. The arrays are copied directly instead.
     Vec_Eigen_Matrix(const Vec_Eigen_Matrix& o)
@@ -63,6 +89,7 @@ public:
           _sp(), _slots(o._slots), _valid(o._valid), _free_row_ids(o._free_row_ids), _valid_count(o._valid_count) {
         _copy_sp_from(o);
     }
+
     Vec_Eigen_Matrix& operator=(const Vec_Eigen_Matrix& o) {
         if (this == &o) return *this;
         _reserve_perz = o._reserve_perz; _row_reserve_perz = o._row_reserve_perz; _row_reserve_min_amount = o._row_reserve_min_amount;
@@ -70,6 +97,7 @@ public:
         _copy_sp_from(o);
         return *this;
     }
+
     // Moves swap the raw buffers explicitly (older Eigen versions have no sparse move and would fall back to the broken copy).
     Vec_Eigen_Matrix(Vec_Eigen_Matrix&& o) noexcept
         : _reserve_perz(o._reserve_perz), _row_reserve_perz(o._row_reserve_perz), _row_reserve_min_amount(o._row_reserve_min_amount),
@@ -77,6 +105,7 @@ public:
         _sp.swap(o._sp);
         o._slots = 0; o._valid_count = 0; o._valid.clear();
     }
+
     Vec_Eigen_Matrix& operator=(Vec_Eigen_Matrix&& o) noexcept {
         if (this == &o) return *this;
         _reserve_perz = o._reserve_perz; _row_reserve_perz = o._row_reserve_perz; _row_reserve_min_amount = o._row_reserve_min_amount;
@@ -86,6 +115,7 @@ public:
         return *this;
     }
  
+    
     // access
     [[nodiscard]] View       row(Index Idx) noexcept       { return View(_vals() + _outer()[Idx], static_cast<Index>(_nnz()[Idx]), Idx); }
     [[nodiscard]] Const_View row(Index Idx) const noexcept { return Const_View(_vals() + _outer()[Idx], static_cast<Index>(_nnz()[Idx]), Idx); }

@@ -34,6 +34,9 @@ void Benchmark_Libigl_V2_5::_barycenter() {
 
 
 void Benchmark_Libigl_V2_5::_normal() {
+    N_V.resize(V.rows(), 3);
+    N_F.resize(F.rows(), 3);
+
     igl::per_face_normals(V, F, N_F);
     igl::per_vertex_normals(V, F, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_UNIFORM, N_F, N_V);
 }
@@ -46,7 +49,6 @@ void Benchmark_Libigl_V2_5::_smoothing() {
     std::vector<bool> border = igl::is_border_vertex(F);
 
     // In place, vertex by vertex (later vertices see already-smoothed positions),
-    // exactly like the OpenMesh loop.
     for (int v = 0; v < V.rows(); ++v) {
         if (border[v] || A[v].empty()) continue;
 
@@ -133,17 +135,15 @@ void Benchmark_Libigl_V2_5::_collapse() {
         F.swap(Fs);
     }
 
-    // igl::collapse_edge is hard-typed to MatrixXd, so the collapse works on a
-    // Scalar copy of V (this conversion is part of the timed region).
     Eigen::MatrixXd Vd = V.cast<double>();
 
-    // libigl's collapse needs the edge topology; it has to be built after the split
+    // libigls collapse needs the edge topology
     Eigen::MatrixXi E, EF, EI;
     Eigen::VectorXi EMAP;
     igl::edge_flaps(F, E, EMAP, EF, EI);
     const int nFs = (int)F.rows();
 
-    // collapse one edge of every new vertex into its neighbour
+    // collapsing one edge of every new vertex into its neighbour
     for (int f = 0; f < nF; ++f) {
         if (F(f, 0) == IGL_COLLAPSE_EDGE_NULL && F(f, 1) == IGL_COLLAPSE_EDGE_NULL) continue;
 
@@ -163,7 +163,7 @@ void Benchmark_Libigl_V2_5::_collapse() {
         igl::collapse_edge(e, p, Vd, F, E, EMAP, EF, EI, e1, e2, f1, f2);
     }
 
-    // remove deleted items (counterpart of garbage_collection())
+    // removing deleted items (counterpart of garbage_collection())
     {
         int keep = 0;
         for (int r = 0; r < F.rows(); ++r)

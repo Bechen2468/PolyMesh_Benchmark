@@ -20,11 +20,10 @@
 
 
 
-#define RANGE_START        250000
+#define RANGE_START        1000000
 #define RANGE_END          RANGE_START
 #define RANGE_MULTIPLIER         4
-#define ITERATIONS              2
-
+#define ITERATIONS              3
 
 
 #define REGISTER(DISPLAY_NAME, FIXTURE, FUNC, FULL_LOAD_VALUES)             \
@@ -44,11 +43,11 @@ BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
 
     
 
-#define REGISTER_T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES)   \
-BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC, TRAITS)(benchmark::State& state){\
+#define REGISTER_T_RAW(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES, ID)   \
+BENCHMARK_TEMPLATE_DEFINE_F(FIXTURE, TRAITS##_##FUNC##_##ID, TRAITS)(benchmark::State& state){ \
     FUNC(state);                                                            \
 }                                                                           \
-BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
+BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC##_##ID)      \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
@@ -59,7 +58,12 @@ BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC)                              \
     ->Unit(benchmark::kMicrosecond);
 
 
-    
+// counter to make all tests identify individually no matter the input, requires the counter to be parsed as a number first
+#define REGISTER_T_ID(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES, ID) \
+    REGISTER_T_RAW(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES, ID)
+
+#define REGISTER_T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES) \
+    REGISTER_T_ID(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES, __COUNTER__)
 
 
 struct Memory_Observer {

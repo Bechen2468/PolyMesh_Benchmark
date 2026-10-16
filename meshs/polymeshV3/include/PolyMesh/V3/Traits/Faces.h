@@ -74,119 +74,67 @@ concept Faces_InternalC = requires(
 
 
 
-template<typename IndexT = std::uint32_t, typename FastBlockSizeT = uint8_t, typename MeshT = void>
-struct Faces_Ragged_Matrix {
+template<typename IndexT, typename MeshT = void>
+struct Faces_D_Ragged_Matrix {
 private:
     friend MeshT;
-
-    using _Matrix = D_Ragged_Matrix<IndexT, IndexT, FastBlockSizeT>;
-
-
+    using _Matrix = D_Ragged_Matrix<IndexT, IndexT, true>;
+ 
 public:
     using Index = IndexT;
-    static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
-
-    using View       = typename _Matrix::RowView;
-    using Const_View = typename _Matrix::Const_RowView;
-    using Iter       = typename _Matrix::RowIter;
-    using Const_Iter = typename _Matrix::Const_RowIter;
-    
-    using Face = std::vector<Index>;
-
-
+    static constexpr Index INDEX_INVALID = _Matrix::INDEX_INVALID;
+ 
+    using View       = typename _Matrix::View;
+    using Const_View = typename _Matrix::Const_View;
+    using Iter       = typename _Matrix::Iter;
+    using Const_Iter = typename _Matrix::Const_Iter;
+    using Face       = std::vector<Index>;
+ 
 private:
     _Matrix _data;
-
+ 
 public:
-    Faces_Ragged_Matrix(float Reserve_Perz):
-        _data(0, Reserve_Perz) {}
-
-
+    Faces_D_Ragged_Matrix(float Reserve_Perz): _data(Reserve_Perz, 0.0f, 0) {}
+ 
     [[nodiscard]] View operator[](Index Idx) noexcept { return _data.row(Idx); }
     [[nodiscard]] Const_View operator[](Index Idx) const noexcept { return _data.row(Idx); }
-
     [[nodiscard]] Index degree(Index Idx) const noexcept { return _data.row_size(Idx); }
     [[nodiscard]] bool is_valid(Index Idx) const noexcept { return _data.is_valid(Idx); }
-    
-
     [[nodiscard]] Index valid_amount() const noexcept { return _data.row_count(); }
     [[nodiscard]] Index capacity() const noexcept { return _data.row_capacity(); }
-    
-
     [[nodiscard]] Iter begin() noexcept { return _data.begin(); }
     [[nodiscard]] Iter end() noexcept { return _data.end(); }
     [[nodiscard]] Const_Iter begin() const noexcept { return _data.begin(); }
     [[nodiscard]] Const_Iter end() const noexcept { return _data.end(); }
-
-
+ 
 private:
-    Index add(std::span<const Index> f) {
-        return _data.append_row(f);
-    }
-
-    Index add(const Face& f) {
-        return add(std::span<const Index>(f));
-    }
-
-    // TODO: make acctual bulk
+    Index add(std::span<const Index> f) { return _data.add_row(f); }
+    Index add(const Face& f) { return add(std::span<const Index>(f)); }
+ 
     std::vector<Index> add(const std::vector<std::vector<Index>>& f) {
         std::vector<Index> idx;
         idx.reserve(f.size());
-
-        for(auto& fi : f) {
-            idx.push_back(add(std::span<const Index>(fi)));
-        }
-
-        return idx; 
+        for (auto& fi : f) idx.push_back(add(std::span<const Index>(fi)));
+        return idx;
     }
-
-    void remove(Index Idx) noexcept { _data.delete_row(Idx); }
-
+ 
+    void remove(Index Idx) noexcept { _data.set_invalid(Idx); }
     void expand(Index Idx, Index Deg) { _data.resize_row(Idx, Deg); }
-    
     void reserve(Index Data_Size) { _data.reserve(Data_Size); }
-
-
-
-    // TODO
-    void compact(std::span<const Index> new_order, bool rebuild_reserve) {}
-    
+    void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
+ 
     void load_off(std::ifstream& file, Index f_count) {
-        auto& _d            = _data.get_data();
-        auto& _rows         = _data.get_rows();
-        auto& _id_to_rawId  = _data.get_id_to_rawId();
-        auto& _rawId_to_id  = _data.get_rawId_to_id();
-
-        _id_to_rawId.resize(f_count);
-        _rawId_to_id.resize(f_count);
-        _rows.resize(0);
-        _rows.reserve(f_count);
-
-        _d.resize(0);
-        _d.reserve(f_count * 3);
-
-        Index current_raw_offset = 0;
-
+        reserve(f_count * 3);
+        std::vector<Index> face_buf;
         for (Index fi = 0; fi < f_count; ++fi) {
-            Index n;
-            file >> n;
-
-            _id_to_rawId[fi] = fi;
-            _rawId_to_id[fi] = fi;
-
-            _rows.push_back({current_raw_offset, static_cast<Index>(n), static_cast<Index>(n)});
-
-            for (Index j = 0; j < n; ++j) {
-                Index vid;
-                file >> vid;
-                _d.push_back(vid);
-            }
-            current_raw_offset += n;
+            Index n; file >> n;
+            face_buf.resize(n);
+            for (Index j = 0; j < n; ++j) file >> face_buf[j];
+            add(face_buf);
         }
-
-        reserve(_d.size()); 
     }
 };
+
 
 
 
@@ -311,7 +259,8 @@ private:
     _Matrix _data;
 
 public:
-    Faces_Vec_Vec_Matrix(float Reserve_Perz): _data(Reserve_Perz, 0.0f, 0) {}
+    Faces_Vec_Vec_Matrix(float Reserve_Perz): 
+        _data(Reserve_Perz, 0) {}
 
     [[nodiscard]] View operator[](Index Idx) noexcept { return _data.row(Idx); }
     [[nodiscard]] Const_View operator[](Index Idx) const noexcept { return _data.row(Idx); }

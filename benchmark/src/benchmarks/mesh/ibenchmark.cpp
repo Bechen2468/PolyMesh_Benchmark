@@ -35,8 +35,8 @@ void IBenchmark::run_load(benchmark::State& state) {
 
         state.PauseTiming();
         mem.measure_post_run();
-        //std::cout << "Loading finished.." << std::endl;
-        //getchar();
+        std::cout << "Loading finished.." << std::endl;
+        getchar();
         state.ResumeTiming();
     }
 }

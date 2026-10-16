@@ -93,16 +93,15 @@ public:
     using Signed_Index = typename std::make_signed<Index>;
 
     using Vertices = Vertices_Pool_Matrix<ScalarT, IndexT, MeshT>;
-    using Faces = Faces_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
-    //using Faces = Faces_Vec_Vec_Matrix<IndexT, BinSizeT, MeshT>;
+    using Faces = Faces_Append_Ragged_Matrix<IndexT, MeshT>;
 
     using Vertex = std::array<Scalar, 3>;
     using Face = std::vector<Index>;
     
-    using VV_HE = VV_HE_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
-    using VF = VF_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
+    using VV_HE = VV_HE_Append_Ragged_Matrix<IndexT, MeshT>;
+    using VF = VF_Append_Ragged_Matrix<IndexT, MeshT>;
 
-    using EF = EF_Ragged_Matrix<IndexT, BinSizeT, MeshT>;
+    using EF = EF_Append_Ragged_Matrix<IndexT, MeshT>;
     using Edge = EF::Edge;
 
 

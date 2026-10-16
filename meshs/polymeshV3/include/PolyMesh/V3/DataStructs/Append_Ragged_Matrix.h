@@ -59,6 +59,7 @@ private:
 // ----------------------------------------------------------------------------
 public:
     Append_Ragged_Matrix(float Reserve_Perz = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1);
+    Append_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2f, float Row_Reserve_Perz = 0.34f, Index Row_Reserve_Min_Amount = 1);
 
 
     void reserve(Index Data_Size) { _ensure_data_capacity(Data_Size); }

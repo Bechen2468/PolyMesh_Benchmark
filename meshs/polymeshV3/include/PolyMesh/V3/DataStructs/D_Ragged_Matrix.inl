@@ -3,746 +3,593 @@
 #include "PolyMesh/V3/DataStructs/D_Ragged_Matrix.h"
 #endif
 // ----------------------------------------------------------------------------
-#define DCSR_T template<typename DataT, typename Index, typename FastBlockSizeT>
-#define DCSR D_Ragged_Matrix<DataT, Index, FastBlockSizeT>
+#define DCSR_T template<typename DataT, typename IndexT, bool ReuseIdsT, typename FastBlockSizeT>
+#define DCSR D_Ragged_Matrix<DataT, IndexT, ReuseIdsT, FastBlockSizeT>
 // ----------------------------------------------------------------------------
 
 
 
 namespace PolyMesh::V3 {
 // ----------------------------------------------------------------------------
-// FreeBlocks
+// Construction
 // ----------------------------------------------------------------------------
-#pragma region FreeBlocks
-
-
-DCSR_T
-int DCSR::FreeBlocks::debug_validate() const {
-    std::vector<bool> seen(_free_blocks.size(), false);
-    Index reached = 0;
-    int fail_code = 0;
-
-    auto walk_chain = [&](Index head, Index expected_size) -> bool {
-        Index cur = head;
-        Index prev = INDEX_INVALID;
-        while(cur != INDEX_INVALID) {
-            if(cur >= _free_blocks.size()) { fail_code = 1; return false; }
-            if(seen[cur]) { fail_code = 2; return false; }
-            seen[cur] = true;
-            ++reached;
-
-            const FreeBlock& b = _free_blocks[cur];
-            if(b.size != expected_size) { fail_code = 3; return false; }
-            if(b.bin_prev != prev) { fail_code = 4; return false; }
-
-            prev = cur;
-            cur = b.bin_next;
-        }
-        return true;
-    };
-
-    for(Index i = 0; i < FAST_BLOCK_SIZE; ++i) {
-        if(_bins.small_bins[i] == INDEX_INVALID) continue;
-        if(!walk_chain(_bins.small_bins[i], i + 1)) return fail_code;
-    }
-
-    for(auto& [size, head] : _bins.large_bins) {
-        if(!walk_chain(head, size)) return fail_code;
-    }
-
-    if(reached != _free_blocks.size()) return 7;
-
-    for(Index i = 0; i < _free_blocks.size(); ++i) {
-        const FreeBlock& b = _free_blocks[i];
-        if(b.begin >= _dataIdx_to_free_block_idx.size()) return 8;
-        if(_dataIdx_to_free_block_idx[b.begin] != i) return 9;
-        Index last = b.begin + b.size - 1;
-        if(last >= _dataIdx_to_free_block_idx.size()) return 10;
-        if(_dataIdx_to_free_block_idx[last] != i) return 11;
-    }
-
-    return 0;
-}
-
-
-
-
+#pragma region Construction
 
 DCSR_T
-void DCSR::FreeBlocks::resize(Index Size) {
-    _dataIdx_to_free_block_idx.resize(Size, INDEX_INVALID);
-}
-
-
-
-DCSR_T
-typename DCSR::Row DCSR::FreeBlocks::try_get_row(Index Size) {
-    if (Size == 0) return Row{0, 0, 0};
-
-    Index found_block_idx = INDEX_INVALID;
-
-    if (Size <= FAST_BLOCK_SIZE) {
-        // Bitmask witchcraft:
-        // Setting all lower Size-1 bits to 0 by using AND on an inverted bitmask of Size-1 bit set minus a real 1 ( sets all lower bits to 1 ) 
-        FastBlockSizeT usable = _bins.small_bins_bitmask & ~((FastBlockSizeT(1) << (Size - 1)) - 1);
-        // if usage is 0, there are no bits set above equal to Size-1
-        if (usable != 0) {
-            // counter_zero just gets the index of the lowest 1 very fast
-            Index bin_idx = static_cast<Index>(std::countr_zero(usable));
-            found_block_idx = _bins.small_bins[bin_idx];
-        }
-    }
-
-    if(found_block_idx == INDEX_INVALID) {
-        auto it = _bins.large_bins.lower_bound(Size);
-        if (it != _bins.large_bins.end())
-            found_block_idx = it->second;
-    }
-
-    if (found_block_idx == INDEX_INVALID)
-        return Row{0, 0, 0};
-
-    Row full{_free_blocks[found_block_idx].begin, _free_blocks[found_block_idx].size};
-
-    // unlink from bin, then reclaim the slot (swap-and-pop)
-    this->remove_from_size_bin(found_block_idx);
-    this->delete_free_block_element(found_block_idx);
-
-    // mark claimed begin and end as occupied
-    _dataIdx_to_free_block_idx[full.begin] = INDEX_INVALID;
-    _dataIdx_to_free_block_idx[full.begin + Size - 1] = INDEX_INVALID;
-
-    Row result{full.begin, Size, Size};
-
-    // return leftover fragment (if any) to the pool
-    if(full.size > Size) {
-        Row fragment{full.begin + Size, full.size - Size};
-        this->free_row(fragment);
-    }
-
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-
-    return result;
-}
-
-
-
-DCSR_T
-bool DCSR::FreeBlocks::try_extend(Index Data_End, Index Extra) {
-    if (Extra == 0) return true;
-    if (Data_End >= _dataIdx_to_free_block_idx.size()) return false;
-
-    Index fb_idx = _dataIdx_to_free_block_idx[Data_End];
-    if (fb_idx == INDEX_INVALID) return false;
-
-    FreeBlock& fb = _free_blocks[fb_idx];
-    if (fb.size < Extra) return false;
-
-    Index new_occupied_last = Data_End + Extra - 1;
-
-    this->remove_from_size_bin(fb_idx);
-
-    if (fb.size == Extra) {
-        // reclaim the free block slot entirely
-        this->delete_free_block_element(fb_idx);
-    } else {
-        // shrink from the front. new leftmost boundary must be re-marked
-        fb.begin += Extra;
-        fb.size  -= Extra;
-        this->insert_into_size_bin(fb_idx);
-        _dataIdx_to_free_block_idx[fb.begin] = fb_idx;
-    }
-
-    // mark the newly occupied range boundaries
-    _dataIdx_to_free_block_idx[Data_End] = INDEX_INVALID;
-    _dataIdx_to_free_block_idx[new_occupied_last] = INDEX_INVALID;
-
-
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-
-    return true;
-}
-
-
-
-DCSR_T
-void DCSR::FreeBlocks::free_row(const Row& row) {
-    if(row.size == 0) return;
-
-    Index left_fb_idx  = (row.begin > 0) ? _dataIdx_to_free_block_idx[row.begin - 1] : INDEX_INVALID;
-    Index right_fb_idx = (row.begin + row.size < _dataIdx_to_free_block_idx.size()) ? _dataIdx_to_free_block_idx[row.begin + row.size] : INDEX_INVALID;
-
-    Row merged = row;
-    Index target_idx = INDEX_INVALID;
-
-    if (left_fb_idx != INDEX_INVALID) {
-        target_idx = left_fb_idx;
-        merged.begin = _free_blocks[left_fb_idx].begin;
-        merged.size += _free_blocks[left_fb_idx].size;
-        this->remove_from_size_bin(left_fb_idx);
-    }
-
-    if (right_fb_idx != INDEX_INVALID) {
-        merged.size += _free_blocks[right_fb_idx].size;
-        this->remove_from_size_bin(right_fb_idx);
-
-        Index last_idx = static_cast<Index>(_free_blocks.size()) - 1;
-        this->delete_free_block_element(right_fb_idx); // swap-and-pop; moved block's
-                                                         // _dataIdx_to_free_block_idx entries
-                                                         // are re-pointed inside this call
-
-        // if target_idx (left neighbor) was the tail element, the swap moved it into
-        // right_fb_idx's now-vacated slot
-        if (target_idx == last_idx) target_idx = right_fb_idx;
-    }
-
-    if (target_idx == INDEX_INVALID) {
-        target_idx = static_cast<Index>(_free_blocks.size());
-        _free_blocks.push_back(FreeBlock{merged.begin, merged.size});
-    } else {
-        _free_blocks[target_idx].begin = merged.begin;
-        _free_blocks[target_idx].size  = merged.size;
-    }
-
-
-
-
-    this->insert_into_size_bin(target_idx);
-
-    _dataIdx_to_free_block_idx[merged.begin] = target_idx;
-    _dataIdx_to_free_block_idx[merged.begin + merged.size - 1] = target_idx;
-    
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-
-}
-
-
-
-DCSR_T
-void DCSR::FreeBlocks::remove_from_size_bin(Index F_Block_Idx) {
-    FreeBlock& block = _free_blocks[F_Block_Idx];
-    Index size = block.size;
-
-    if (size <= FAST_BLOCK_SIZE) {
-        Index bin_idx = size - 1;
-        if (_bins.small_bins[bin_idx] == F_Block_Idx) {
-            _bins.small_bins[bin_idx] = block.bin_next;
-            if (block.bin_next != INDEX_INVALID)
-                _free_blocks[block.bin_next].bin_prev = INDEX_INVALID;
-            if (_bins.small_bins[bin_idx] == INDEX_INVALID)
-                _bins.small_bins_bitmask &= ~(FastBlockSizeT(1) << bin_idx);
-        } else {
-            if (block.bin_prev != INDEX_INVALID)
-                _free_blocks[block.bin_prev].bin_next = block.bin_next;
-            if (block.bin_next != INDEX_INVALID)
-                _free_blocks[block.bin_next].bin_prev = block.bin_prev;
-        }
-    } else {
-        auto it = _bins.large_bins.find(size);
-        if (it != _bins.large_bins.end()) {
-            if (it->second == F_Block_Idx) {
-                if (block.bin_next != INDEX_INVALID) {
-                    _free_blocks[block.bin_next].bin_prev = INDEX_INVALID;
-                    it->second = block.bin_next;
-                } else {
-                    _bins.large_bins.erase(it);
-                }
-            } else {
-                if (block.bin_prev != INDEX_INVALID)
-                    _free_blocks[block.bin_prev].bin_next = block.bin_next;
-                if (block.bin_next != INDEX_INVALID)
-                    _free_blocks[block.bin_next].bin_prev = block.bin_prev;
-            }
-        }
-    }
-
-    block.bin_next = INDEX_INVALID;
-    block.bin_prev = INDEX_INVALID;
-    block.in_bin = false;   
-    
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-}
-
-
-
-DCSR_T
-void DCSR::FreeBlocks::insert_into_size_bin(Index F_Block_Idx) {
-    FreeBlock& block = _free_blocks[F_Block_Idx];
-    Index size = block.size;
-
-
-
-    if (size <= FAST_BLOCK_SIZE) {
-        Index bin_idx = size - 1;
-        Index old_head = _bins.small_bins[bin_idx];
-        block.bin_next = old_head;
-        block.bin_prev = INDEX_INVALID;
-        block.in_bin = true;
-        if (old_head != INDEX_INVALID)
-            _free_blocks[old_head].bin_prev = F_Block_Idx;  //ERROR
-        _bins.small_bins[bin_idx] = F_Block_Idx;
-        _bins.small_bins_bitmask |= (FastBlockSizeT(1) << bin_idx);
-    } else {
-        auto it = _bins.large_bins.find(size);
-        if (it != _bins.large_bins.end()) {
-            Index old_head = it->second;
-            block.bin_next = old_head;
-            block.bin_prev = INDEX_INVALID;
-            block.in_bin = true;
-            _free_blocks[old_head].bin_prev = F_Block_Idx;
-            it->second = F_Block_Idx;
-        } else {
-            _bins.large_bins[size] = F_Block_Idx;
-            block.bin_next = INDEX_INVALID;
-            block.bin_prev = INDEX_INVALID;
-            block.in_bin = true;
-        }
-    }
-    
-    
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-}
-
-
-DCSR_T
-void DCSR::FreeBlocks::delete_free_block_element(Index F_Block_Idx) {
-    Index last_idx = static_cast<Index>(_free_blocks.size()) - 1;
-
-    if(F_Block_Idx != last_idx) {
-        _free_blocks[F_Block_Idx] = _free_blocks[last_idx];
-        FreeBlock& moved_block = _free_blocks[F_Block_Idx];
-
-        if(moved_block.bin_prev != INDEX_INVALID) {
-            _free_blocks[moved_block.bin_prev].bin_next = F_Block_Idx;
-        } else if(moved_block.in_bin) {
-            // moved block was a bin chain head — fix bin header
-            if(moved_block.size <= FAST_BLOCK_SIZE)
-                _bins.small_bins[moved_block.size - 1] = F_Block_Idx;
-            else
-                _bins.large_bins[moved_block.size] = F_Block_Idx;
-        }
-        if(moved_block.bin_next != INDEX_INVALID)
-            _free_blocks[moved_block.bin_next].bin_prev = F_Block_Idx;
-
-        // re-point begin and end address the moved block owns to its new slot index
-        _dataIdx_to_free_block_idx[moved_block.begin] = F_Block_Idx;
-        _dataIdx_to_free_block_idx[moved_block.begin + moved_block.size - 1] = F_Block_Idx;
-    }
-
-    _free_blocks.pop_back();
-
-
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-}
-
-
-
-#pragma endregion FreeBlocks
-
-// ----------------------------------------------------------------------------
-// D_Ragged_Matrix
-// ----------------------------------------------------------------------------
-#pragma region Core
-
-DCSR_T
-DCSR::D_Ragged_Matrix(const Index Reserve_Size, float Reserve_Perz):
+DCSR::D_Ragged_Matrix(float Reserve_Perz, float Row_Reserve_Perz, Index Row_Reserve_Min_Amount):
 _reserve_perz(Reserve_Perz),
-_data(0),
-_rows(0),
-_id_to_rawId(0)
+_row_reserve_perz(Row_Reserve_Perz),
+_row_reserve_min_amount(Row_Reserve_Min_Amount)
 {
-    this->reserve(Reserve_Size);
+    _small_head.fill(INDEX_INVALID);
 }
 
 
-
 DCSR_T
-DCSR::D_Ragged_Matrix(std::vector<std::vector<DataT>> Data, float Reserve_Perz):
-_reserve_perz(Reserve_Perz)
+DCSR::D_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz, float Row_Reserve_Perz, Index Row_Reserve_Min_Amount):
+D_Ragged_Matrix(Reserve_Perz, Row_Reserve_Perz, Row_Reserve_Min_Amount)
 {
-    Index size = 0;
-    for(auto v : Data) size += v.size();
+    _rows.resize(Row_Sizes.size());
 
-    _data.resize(size);
-    _rows.reserve(Data.size());
-    _id_to_rawId.reserve(Data.size());
-    _rawId_to_id.reserve(Data.size());
-
-    for(Index i = 0, realI = 0; i < Data.size(); ++i) {
-        _data.insert(_data.begin() + realI, Data[i].begin(), Data[i].end());
-        _rows.push_back({realI, Data[i].size()});
-        _id_to_rawId[i] = i;
-        _rawId_to_id[i] = i;
-
-        realI += Data[i].size();
+    Index total = 0;
+    for(std::size_t i = 0; i < Row_Sizes.size(); ++i) {
+        const Index res = _initial_row_reserve(Row_Sizes[i]);
+        _rows[i] = Row{total, 0, res};
+        total += res;
     }
+    _valid_count = static_cast<Index>(Row_Sizes.size());
 
-    this->reserve(_data.size());
-}
-    
-
-
-DCSR_T
-DCSR::D_Ragged_Matrix(Vec<DataT>&& Data, Vec<Row>&& Rows, Vec<Index>&& Id_to_rawId, Vec<Index>&& RawId_to_id, float Reserve_Perz): 
-_reserve_perz(static_cast<float>(Reserve_Perz)),
-_data(std::move(Data)),
-_rows(std::move(Rows)),
-_id_to_rawId(std::move(Id_to_rawId)),
-_rawId_to_id(std::move(RawId_to_id))
-{
-    _free_blocks_manager.resize(static_cast<Index>(_data.size()));
+    const Index spare = static_cast<Index>(std::ceil(static_cast<float>(total) * _reserve_perz));
+    _resize_pool(total + spare);
+    _free_span(total, spare);
 }
 
+#pragma endregion Construction
 
 
-DCSR_T
-DCSR::D_Ragged_Matrix(const D_Ragged_Matrix<DataT, Index, FastBlockSizeT>& other):
-    _reserve_perz(other._reserve_perz),
-    _data(other._data),
-    _rows(other._rows),
-    _id_to_rawId(other._id_to_rawId),
-    _rawId_to_id(other._rawId_to_id),
-    _free_blocks_manager(other._free_blocks_manager)
-{}
-
-
+// ----------------------------------------------------------------------------
+// Rows
+// ----------------------------------------------------------------------------
+#pragma region Rows
 
 DCSR_T
-DCSR::D_Ragged_Matrix(D_Ragged_Matrix<DataT, Index, FastBlockSizeT>&& other) noexcept:
-    _reserve_perz(other._reserve_perz),
-    _data(std::move(other._data)),
-    _rows(std::move(other._rows)),
-    _id_to_rawId(std::move(other._id_to_rawId)),
-    _rawId_to_id(std::move(other._rawId_to_id)),
-    _free_blocks_manager(std::move(other._free_blocks_manager))
-{}
-
-
-
-DCSR_T
-inline void DCSR::reserve(const Index Data_Size) {
-    Index padding = static_cast<Index>(Data_Size * _reserve_perz);
-    Index target_size = Data_Size + padding;
-    Index old_size = static_cast<Index>(_data.size());
-
-    if (target_size > old_size) {
-        _data.resize(target_size);
-        Index new_segment_size = target_size - old_size;
-
-        Row new_tail_row;
-        new_tail_row.begin = old_size;
-        new_tail_row.size = new_segment_size;
-        new_tail_row.reserve = new_segment_size;
-
-        _free_blocks_manager.resize(target_size);
-        _free_blocks_manager.free_row(new_tail_row);
-    }
-}
-
-
-
-DCSR_T
-inline Index DCSR::row_reserve_size(const Index Row_Idx) const {
-    return _rows[_id_to_rawId[Row_Idx]].reserve;
+void DCSR::reserve(Index Data_Size) {
+    const Index n = _pool_size();
+    if(Data_Size <= n) return;
+    _resize_pool(Data_Size);
+    _free_span(n, Data_Size - n);
 }
 
 
 DCSR_T
-inline void DCSR::reserve_row(const Index Row_Reserve_Min_Amount) {
-    _row_reserve_min_amount = Row_Reserve_Min_Amount;
+typename DCSR::Index DCSR::add_row(std::span<const DataT> Row_Data) {
+    const Index sz  = static_cast<Index>(Row_Data.size());
+    const Index res = _initial_row_reserve(sz);
+    const Index b   = _take(res);
+    std::copy(Row_Data.begin(), Row_Data.end(), _data.begin() + b);
+    return _place_row(Row{b, sz, res});
 }
 
 
-
 DCSR_T
-inline void DCSR::grow_row_count(const Index Row_Amount) {
-    Index preSize = static_cast<Index>(_id_to_rawId.size());
-    Index nSize = std::max<Index>(preSize, Row_Amount);
-    if(nSize <= preSize) return;
-
-    Index nAmount = nSize - preSize;
-    Index preRaw = static_cast<Index>(_rows.size());
-
-    _rows.resize(_rows.size() + nAmount, {0, 0, 0});
-    _id_to_rawId.resize(_id_to_rawId.size() + nAmount);
-    _rawId_to_id.resize(_rawId_to_id.size() + nAmount);
-    for(Index i = 0; i < nAmount; ++i) {
-        Index raw = preRaw + i;
-        _id_to_rawId[preSize + i] = raw;
-        _rawId_to_id[raw] = preSize + i;
-    }
+typename DCSR::Index DCSR::add_row(Index Size) {
+    const Index res = _initial_row_reserve(Size);
+    const Index b   = _take(res);
+    std::fill_n(_data.begin() + b, Size, Data{});
+    return _place_row(Row{b, Size, res});
 }
 
 
+DCSR_T
+void DCSR::reinit_row(Index Idx) {
+    if(Idx >= row_capacity()) _rows.resize(Idx + 1, Row{INDEX_INVALID, 0, 0});
+
+    const bool was_valid = is_valid(Idx);
+    if(was_valid) _free_span(_rows[Idx].begin, _rows[Idx].reserve);   // not like Append: the old span is reused
+
+    const Index res = _initial_row_reserve(0);
+    _rows[Idx] = Row{_take(res), 0, res};
+
+    if(!was_valid) ++_valid_count;
+}
+
 
 DCSR_T
-inline void DCSR::row_resize(const Index Row_Idx, const Index Size) {
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = _free_blocks_manager.debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-
-    Index raw_id = _id_to_rawId[Row_Idx];
-    assert(raw_id != INDEX_INVALID && "Tried to resize a non existant row");
-    Row& target = _rows[raw_id];
-
-    if(Size <= target.reserve) {
-        target.size = Size;
+void DCSR::resize_row(Index Idx, Index Size) {
+    Row& r = _rows[Idx];
+    if(Size <= r.reserve) {
+        if(Size > r.size) std::fill(_data.begin() + r.begin + r.size, _data.begin() + r.begin + Size, Data{});
+        r.size = Size;
         return;
     }
 
-    // need more physical capacity than currently reserved; grow with slack
-    Index new_reserve = static_cast<Index>(std::ceil(
-        std::max({
-            static_cast<float>(Size),
-            target.reserve * (1.0f + _row_reserve_perz),
-            static_cast<float>(_row_reserve_min_amount)
-        })
-    ));
-
-    Index extra = new_reserve - target.reserve;
-
-    // fast path: extend into space adjacent to the RESERVED region, not the
-    // used region;slack between size and reserve is already mine
-    if(_free_blocks_manager.try_extend(target.begin + target.reserve, extra)) {
-        target.size = Size;
-        target.reserve = new_reserve;
-        return;
-    }
-
-    // slow path: relocate the whole reserved region (not just the used part)
-    Row new_space = _free_blocks_manager.try_get_row(new_reserve);
-    if(new_space.size == 0) {
-        this->reserve(_data.size() + new_reserve);
-        new_space = _free_blocks_manager.try_get_row(new_reserve);
-    }
-
-
-    if(target.size != 0) {
-        std::copy(_data.begin() + target.begin,
-                  _data.begin() + target.begin + target.size,
-                  _data.begin() + new_space.begin);
-    }
-    if(target.reserve != 0) {
-        _free_blocks_manager.free_row({target.begin, target.reserve, target.reserve}); // free the FULL reserved span
-    }
-
-    target.begin = new_space.begin;
-    target.size = Size;
-    target.reserve = new_reserve;
-    
-#ifdef D_RAGGED_MATRIX_DEBUG
-    {
-    int _dv = _free_blocks_manager.debug_validate();
-    assert(_dv == 0);
-    }
-#endif
-}
-
-
-
-
-
-DCSR_T
-inline void DCSR::delete_row(const Index Row_Idx) {
-    Index raw_id = _id_to_rawId[Row_Idx];
-    if (raw_id == INDEX_INVALID) return;
-
-    // free the RESERVED extent, not just the used part
-    _free_blocks_manager.free_row({_rows[raw_id].begin, _rows[raw_id].reserve});
-
-    Index last_raw = static_cast<Index>(_rows.size()) - 1;
-    if (raw_id != last_raw) {
-        _rows[raw_id] = _rows[last_raw];
-        _rawId_to_id[raw_id] = _rawId_to_id[last_raw];
-        _id_to_rawId[_rawId_to_id[raw_id]] = raw_id;
-    }
-
-    _rows.pop_back();
-    _rawId_to_id.pop_back();
-    _id_to_rawId[Row_Idx] = INDEX_INVALID;
+    const Index old_size = r.size;
+    _grow_row(Idx, Size);
+    std::fill(_data.begin() + r.begin + old_size, _data.begin() + r.begin + Size, Data{});
+    r.size = Size;
 }
 
 
 DCSR_T
-inline void DCSR::reinit_row(const Index Row_Idx) {
-    if(Row_Idx >= row_capacity()) {
-        grow_row_count(Row_Idx + 1);
-    }
-
-    Index initial_reserve = _row_reserve_min_amount;
-    Row claim{0, 0, 0};
-    if(initial_reserve > 0) {
-        claim = _free_blocks_manager.try_get_row(initial_reserve);
-        if(claim.size == 0) {
-            this->reserve(_data.size() + initial_reserve);
-            claim = _free_blocks_manager.try_get_row(initial_reserve);
-        }
-    }
-
-    Index raw_id = _id_to_rawId[Row_Idx];
-
-    if(raw_id != INDEX_INVALID) {
-        Row& target = _rows[raw_id];
-        if(target.reserve != 0) {
-            _free_blocks_manager.free_row({target.begin, target.reserve, target.reserve});
-        }
-        target.begin = claim.begin;
-        target.size = 0;
-        target.reserve = initial_reserve;
-    } else {
-        Index new_raw_id = static_cast<Index>(_rows.size());
-        _rows.push_back({claim.begin, 0, initial_reserve});
-        _rawId_to_id.push_back(Row_Idx);
-        _id_to_rawId[Row_Idx] = new_raw_id;
-    }
-}
-
-
-
-DCSR_T
-inline Index DCSR::append_row(std::span<const DataT> Data) {
-    Index needed_size = static_cast<Index>(Data.size());
-
-    // give fresh rows slack from the start too; not just exact-fits
-    Index initial_reserve = static_cast<Index>(std::ceil(
-        std::max(static_cast<float>(needed_size), static_cast<float>(_row_reserve_min_amount))
-    ));
-
-    Row claim = _free_blocks_manager.try_get_row(initial_reserve);
-    if (claim.size == 0 && initial_reserve != 0) {
-        this->reserve(_data.size() + initial_reserve);
-        claim = _free_blocks_manager.try_get_row(initial_reserve);
-    }
-
-    std::copy(Data.begin(), Data.end(), _data.begin() + claim.begin);
-
-    Index raw_id = static_cast<Index>(_rows.size());
-    _rows.push_back({claim.begin, needed_size, initial_reserve});
-    _rawId_to_id.push_back(INDEX_INVALID);
-
-    Index logical_id = static_cast<Index>(_id_to_rawId.size());
-    _id_to_rawId.push_back(raw_id);
-    _rawId_to_id[raw_id] = logical_id;
-
-    return logical_id;
+void DCSR::grow_row_count(Index Count) {
+    if(Count <= row_capacity()) return;
+    _rows.resize(Count, Row{INDEX_INVALID, 0, 0});
 }
 
 
 DCSR_T
-inline Index DCSR::row_append(const Index Row_Idx, const DataT& Value) {
-    Index slot = row_size(Row_Idx);
-    row_resize(Row_Idx, slot + 1); // O(1) whenever slack remains
-    Index raw_id = _id_to_rawId[Row_Idx];
-    _data[_rows[raw_id].begin + slot] = Value;
+void DCSR::set_valid(Index Idx) {
+    if(Idx >= row_capacity()) _rows.resize(Idx + 1, Row{INDEX_INVALID, 0, 0});
+
+    if(is_valid(Idx)) _free_span(_rows[Idx].begin, _rows[Idx].reserve);
+    else              ++_valid_count;
+
+    _rows[Idx] = Row{0, 0, 0};
+}
+
+
+DCSR_T
+void DCSR::set_invalid(Index Idx) {
+    if(is_valid(Idx)) {
+        _free_span(_rows[Idx].begin, _rows[Idx].reserve);
+        --_valid_count;
+        _free_row_ids.push(Idx);
+    }
+    _rows[Idx] = Row{INDEX_INVALID, 0, 0};
+}
+
+
+DCSR_T
+void DCSR::row_remove_swap(Index Idx, Index Slot_Idx) {
+    Row& r = _rows[Idx];
+    assert(Slot_Idx < r.size && "row_remove_swap: slot out of range");
+
+    const Index last = r.size - 1;
+    if(Slot_Idx != last) std::swap(_data[r.begin + Slot_Idx], _data[r.begin + last]);
+    r.size = last;
+}
+
+
+DCSR_T
+typename DCSR::Index DCSR::row_append(Index Idx, const DataT& Value) {
+    const Index slot = _rows[Idx].size;
+    if(slot + 1 > _rows[Idx].reserve) _grow_row(Idx, slot + 1);
+
+    Row& r = _rows[Idx];
+    _data[r.begin + slot] = Value;
+    r.size = slot + 1;
     return slot;
 }
 
 
 DCSR_T
-inline void DCSR::row_remove_swap(const Index Row_Idx, const Index Slot_Idx) {
-    Index raw_id = _id_to_rawId[Row_Idx];
-    Row& r = _rows[raw_id];
-    assert(r.size > 0 && "row_remove_swap on empty row");
-    Index last = r.size - 1;
-    if(Slot_Idx != last) {
-        std::swap(_data[r.begin + Slot_Idx], _data[r.begin + last]);
+void DCSR::compact(std::span<const Index> Old_To_New, bool Rebuild_Reserve) {
+    _free_row_ids = {};
+
+    // new slot -> old slot (INDEX_INVALID = empty slot)
+    Vec<Index> new_to_old;
+    if(Old_To_New.empty()) {
+        new_to_old.resize(_rows.size());
+        for(Index i = 0; i < row_capacity(); ++i) new_to_old[i] = i;
+    } else {
+        assert(Old_To_New.size() == _rows.size() && "permutation size must match current row count");
+        Index new_row_count = 0;
+        for(Index new_id : Old_To_New)
+            if(new_id != INDEX_INVALID) new_row_count = std::max<Index>(new_row_count, new_id + 1);
+        new_to_old.assign(new_row_count, INDEX_INVALID);
+        for(Index old_id = 0; old_id < static_cast<Index>(Old_To_New.size()); ++old_id)
+            if(Old_To_New[old_id] != INDEX_INVALID) new_to_old[Old_To_New[old_id]] = old_id;
     }
-    r.size = last; // O(1) -- reserve untouched, no allocator call at all
+
+    Index total = 0;
+    for(Index old : new_to_old)
+        if(old != INDEX_INVALID && is_valid(old))
+            total += Rebuild_Reserve ? _initial_row_reserve(_rows[old].size) : _rows[old].size;
+
+    Vec<Data> new_data(total);
+    Vec<Row>  new_rows(new_to_old.size(), Row{INDEX_INVALID, 0, 0});
+    Index pos = 0, valid = 0;
+    for(Index id = 0; id < static_cast<Index>(new_to_old.size()); ++id) {
+        const Index old = new_to_old[id];
+        if(old == INDEX_INVALID || !is_valid(old)) continue;
+
+        const Row& r = _rows[old];
+        std::copy_n(_data.begin() + r.begin, r.size, new_data.begin() + pos);
+
+        const Index res = Rebuild_Reserve ? _initial_row_reserve(r.size) : r.size;
+        new_rows[id] = Row{pos, r.size, res};
+        pos += res;
+        ++valid;
+    }
+
+    _data = std::move(new_data);
+    _rows = std::move(new_rows);
+    _valid_count = valid;
+    _reset_free_space();
+    _edge_bits.assign((static_cast<std::size_t>(_pool_size()) + 63) / 64, 0);
 }
 
-
-
-DCSR_T
-inline Index DCSR::row_count() const {
-    // returning the total count of active rows currently tracked
-    return static_cast<Index>(_rows.size());
-}
-
-DCSR_T
-inline Index DCSR::row_size(const Index Row_Idx) const {
-    // routing the logical user ID through our lookup layer to find the raw row sizeget_id_to_rawIds
-    Index raw_id = _id_to_rawId[Row_Idx];
-    return _rows[raw_id].size;
-}
-
-
-DCSR_T
-inline bool DCSR::is_valid(const Index Row_Idx) const {
-    return _id_to_rawId[Row_Idx] != INDEX_INVALID;
-}
-
+#pragma endregion Rows
 
 
 // ----------------------------------------------------------------------------
-// Getter
+// Statistics / Debug
 // ----------------------------------------------------------------------------
-DCSR_T
-[[nodiscard]] DataT& DCSR::get(const Index Row_RawIdx, const Index Data_Idx) {
-    // accessing the raw element directly using the physical row offset
-    return _data[_rows[Row_RawIdx].begin + Data_Idx];
-}
-
-
+#pragma region Statistics
 
 DCSR_T
-DCSR&  DCSR::operator=(const DCSR& other) {
-    if(this == &other) return *this;
-    _data = other._data;
-    _rows = other._rows;
-    _id_to_rawId = other._id_to_rawId;
-    _rawId_to_id = other._rawId_to_id;
-    _reserve_perz = other._reserve_perz;
-    _free_blocks_manager = other._free_blocks_manager;
-    return *this;
+typename DCSR::Index DCSR::free_slot_count() const {
+    Index s = 0;
+    for(const FreeBlock& b : _fb) s += b.size;   // unused records have size 0
+    return s;
 }
 
 
 DCSR_T
-DCSR&  DCSR::operator=(DCSR&& other) noexcept {
-    if(this == &other) return *this;
-    _data = std::move(other._data);
-    _rows = std::move(other._rows);
-    _id_to_rawId = std::move(other._id_to_rawId);
-    _rawId_to_id = std::move(other._rawId_to_id);
-    _reserve_perz = other._reserve_perz;
-    _free_blocks_manager = std::move(other._free_blocks_manager);
-    return *this;
+std::size_t DCSR::memory_bytes() const {
+    return _data.capacity()      * sizeof(Data)
+         + _rows.capacity()      * sizeof(Row)
+         + _fb.capacity()        * sizeof(FreeBlock)
+         + _fb_unused.capacity() * sizeof(Index)
+         + _edge_bits.capacity() * sizeof(std::uint64_t)
+         + _large_head.size()    * (sizeof(Index) * 2 + 32);   // rough node size of std::map
 }
 
 
-#pragma endregion Core
+DCSR_T
+int DCSR::debug_validate() const {
+    const Index n = _pool_size();
+    std::vector<std::uint8_t> owner(n, 0);           // 0 = nothing, 1 = row, 2 = free block
+
+    // rows: inside the pool, no overlaps
+    Index valid = 0;
+    for(Index i = 0; i < row_capacity(); ++i) {
+        const Row& r = _rows[i];
+        if(r.begin == INDEX_INVALID) continue;
+        ++valid;
+        if(r.size > r.reserve) return 1;
+        if(r.reserve == 0) continue;
+        if(r.begin + r.reserve > n) return 2;
+        for(Index k = r.begin; k < r.begin + r.reserve; ++k) { if(owner[k]) return 3; owner[k] = 1; }
+    }
+    if(valid != _valid_count) return 4;
+
+    // free blocks: inside the pool, no overlaps, edge bits + tags, fully coalesced
+    std::vector<bool> live(_fb.size(), true);
+    for(Index u : _fb_unused) live[u] = false;
+    for(Index id = 0; id < static_cast<Index>(_fb.size()); ++id) {
+        if(!live[id]) continue;
+        const FreeBlock& b = _fb[id];
+        if(b.size == 0 || b.begin + b.size > n) return 5;
+        for(Index k = b.begin; k < b.begin + b.size; ++k) { if(owner[k]) return 6; owner[k] = 2; }
+        if(!_bit(b.begin) || !_bit(b.begin + b.size - 1)) return 7;
+        if(_tag(b.begin) != id || _tag(b.begin + b.size - 1) != id) return 8;
+        if(b.begin + b.size < n && _is_free_start(b.begin + b.size)) return 9;
+    }
+
+    // every slot owned, no stale edge bit on a used slot
+    for(Index k = 0; k < n; ++k) {
+        if(owner[k] == 0) return 10;
+        if(owner[k] == 1 && _bit(k)) return 11;
+    }
+
+    // size bins hold exactly the live blocks
+    Index binned = 0;
+    for(Index s = 1; s <= SMALL_BINS; ++s) {
+        const bool has = (_small_mask >> (s - 1)) & 1u;
+        if(has != (_small_head[s - 1] != INDEX_INVALID)) return 12;
+        for(Index id = _small_head[s - 1]; id != INDEX_INVALID; id = _fb[id].next) {
+            if(_fb[id].size != s || !live[id]) return 13;
+            ++binned;
+        }
+    }
+    for(const auto& [s, head] : _large_head)
+        for(Index id = head; id != INDEX_INVALID; id = _fb[id].next) {
+            if(_fb[id].size != s || !live[id]) return 14;
+            ++binned;
+        }
+    if(binned != free_block_count()) return 15;
+    return 0;
+}
+
+#pragma endregion Statistics
+
+
+// ----------------------------------------------------------------------------
+// Internal: rows
+// ----------------------------------------------------------------------------
+#pragma region Internal_Rows
+
+DCSR_T
+typename DCSR::Index DCSR::_initial_row_reserve(Index Requested_Size) const {
+    return static_cast<Index>(std::ceil(
+        std::max({
+            static_cast<float>(Requested_Size) * (1.0f + _row_reserve_perz),
+            static_cast<float>(_row_reserve_min_amount)
+        })
+    ));
+}
+
+
+DCSR_T
+typename DCSR::Index DCSR::_grown_row_reserve(Index Old_Reserve, Index Needed_Size) const {
+    return static_cast<Index>(std::ceil(
+        std::max({
+            static_cast<float>(Needed_Size),
+            static_cast<float>(Old_Reserve) * (1.0f + _row_reserve_perz),
+            static_cast<float>(_row_reserve_min_amount)
+        })
+    ));
+}
+
+
+DCSR_T
+typename DCSR::Index DCSR::_place_row(const Row& R) {
+    // a freed id can be revived by reinit_row/set_valid while still queued: skip those, never overwrite a live row
+    while(!_free_row_ids.empty() && is_valid(_free_row_ids.front())) _free_row_ids.pop();
+
+    Index id;
+    if(!_free_row_ids.empty()) {
+        id = _free_row_ids.front();
+        _free_row_ids.pop();
+        _rows[id] = R;
+    } else {
+        id = row_capacity();
+        _rows.push_back(R);
+    }
+    ++_valid_count;
+    return id;
+}
+
+
+// give row Idx room for at least Needed entries: first try the free block right behind it, else move the row
+DCSR_T
+void DCSR::_grow_row(Index Idx, Index Needed) {
+    Row& r = _rows[Idx];
+    const Index new_res = _grown_row_reserve(r.reserve, Needed);
+
+    if(_try_extend(r.begin + r.reserve, new_res - r.reserve)) {
+        r.reserve = new_res;
+        return;
+    }
+
+    const Index nb = _take(new_res);                 // may resize the pool; r stays valid (_rows is untouched)
+    std::copy_n(_data.begin() + r.begin, r.size, _data.begin() + nb);
+    _free_span(r.begin, r.reserve);
+    r.begin   = nb;
+    r.reserve = new_res;
+}
+
+
+DCSR_T
+void DCSR::_resize_pool(Index N) {
+    if(N > _data.capacity()) _data.reserve(N);
+    _data.resize(N);
+    _edge_bits.resize((static_cast<std::size_t>(N) + 63) / 64, 0);
+}
+
+#pragma endregion Internal_Rows
+
+
+// ----------------------------------------------------------------------------
+// Internal: free space
+// ----------------------------------------------------------------------------
+#pragma region Internal_FreeSpace
+
+DCSR_T
+typename DCSR::Index DCSR::_tag(Index x) const {
+    Index id;
+    std::memcpy(&id, &_data[x], sizeof(Index));
+    return id;
+}
+
+
+DCSR_T
+void DCSR::_write_tag(Index x, Index Id) {
+    std::memcpy(&_data[x], &Id, sizeof(Index));
+}
+
+
+// write edge bits + tags of a free block
+DCSR_T
+void DCSR::_mark(Index Id) {
+    const Index b = _fb[Id].begin;
+    const Index e = b + _fb[Id].size - 1;
+    _set_bit(b);
+    _set_bit(e);
+    _write_tag(b, Id);
+    _write_tag(e, Id);
+}
+
+
+DCSR_T
+void DCSR::_unmark(Index Id) {
+    const Index b = _fb[Id].begin;
+    const Index e = b + _fb[Id].size - 1;
+    _clr_bit(b);
+    _clr_bit(e);
+}
+
+
+DCSR_T
+typename DCSR::Index DCSR::_new_record(Index Begin, Index Size) {
+    Index id;
+    if(!_fb_unused.empty()) {
+        id = _fb_unused.back();
+        _fb_unused.pop_back();
+    } else {
+        id = static_cast<Index>(_fb.size());
+        _fb.push_back({});
+    }
+    _fb[id] = FreeBlock{Begin, Size, INDEX_INVALID, INDEX_INVALID};
+    return id;
+}
+
+
+DCSR_T
+void DCSR::_drop_record(Index Id) {
+    _fb[Id].size = 0;
+    _fb_unused.push_back(Id);
+}
+
+
+// size bins: doubl linked lists, new blocks at the head
+DCSR_T
+void DCSR::_bin_insert(Index Id) {
+    FreeBlock& b = _fb[Id];
+    b.prev = INDEX_INVALID;
+
+    if(b.size <= SMALL_BINS) {
+        Index& head = _small_head[b.size - 1];
+        b.next = head;
+        if(head != INDEX_INVALID) _fb[head].prev = Id;
+        head = Id;
+        _small_mask |= FastBlockSizeT(1) << (b.size - 1);
+    } else {
+        auto [it, inserted] = _large_head.try_emplace(b.size, Id);
+        b.next = inserted ? INDEX_INVALID : it->second;
+        if(!inserted) {
+            _fb[it->second].prev = Id;
+            it->second = Id;
+        }
+    }
+}
+
+
+DCSR_T
+void DCSR::_bin_remove(Index Id) {
+    FreeBlock& b = _fb[Id];
+    if(b.prev != INDEX_INVALID) _fb[b.prev].next = b.next;
+    if(b.next != INDEX_INVALID) _fb[b.next].prev = b.prev;
+
+    if(b.prev == INDEX_INVALID) {                    // was the head
+        if(b.size <= SMALL_BINS) {
+            _small_head[b.size - 1] = b.next;
+            if(b.next == INDEX_INVALID) _small_mask &= ~(FastBlockSizeT(1) << (b.size - 1));
+        } else {
+            if(b.next == INDEX_INVALID) _large_head.erase(b.size);
+            else                        _large_head[b.size] = b.next;
+        }
+    }
+    b.next = INDEX_INVALID;
+    b.prev = INDEX_INVALID;
+}
+
+
+// smallest free block with at least N slots, or INDEX_INVALID
+DCSR_T
+typename DCSR::Index DCSR::_find_fit(Index N) const {
+    if(N <= SMALL_BINS) {
+        const FastBlockSizeT m = static_cast<FastBlockSizeT>(_small_mask >> (N - 1));
+        if(m) return _small_head[N - 1 + static_cast<Index>(std::countr_zero(m))];
+    }
+    auto it = _large_head.lower_bound(std::max<Index>(N, SMALL_BINS + 1));
+    return it == _large_head.end() ? INDEX_INVALID : it->second;
+}
+
+
+// take N slots from the free space (grows the pool if nothing fits), returns the begin
+DCSR_T
+typename DCSR::Index DCSR::_take(Index N) {
+    if(N == 0) return 0;
+
+    Index id = _find_fit(N);
+    if(id == INDEX_INVALID) {
+        const Index n      = _pool_size();
+        const Index target = n + N + static_cast<Index>(std::ceil(static_cast<float>(n + N) * _reserve_perz));
+        _resize_pool(target);
+        _free_span(n, target - n);                   // coalesces with a free block at the old end
+        id = _find_fit(N);
+        assert(id != INDEX_INVALID);
+    }
+
+    _bin_remove(id);
+    _unmark(id);
+    const Index b = _fb[id].begin;
+    if(_fb[id].size == N) {
+        _drop_record(id);
+    } else {
+        _fb[id].begin += N;
+        _fb[id].size  -= N;
+        _mark(id);
+        _bin_insert(id);
+    }
+    return b;
+}
+
+
+// take extra slots directly behind position end, if a large enough free block starts there
+DCSR_T
+bool DCSR::_try_extend(Index End, Index Extra) {
+    if(Extra == 0) return true;
+    if(End >= _pool_size() || !_bit(End)) return false;
+
+    const Index id = _tag(End);
+    if(_fb[id].begin != End || _fb[id].size < Extra) return false;
+
+    _bin_remove(id);
+    _unmark(id);
+    if(_fb[id].size == Extra) {
+        _drop_record(id);
+    } else {
+        _fb[id].begin += Extra;
+        _fb[id].size  -= Extra;
+        _mark(id);
+        _bin_insert(id);
+    }
+    return true;
+}
+
+
+// give [Begin, Begin + Size) back, merging with free neighbours on both sides
+DCSR_T
+void DCSR::_free_span(Index Begin, Index Size) {
+    if(Size == 0) return;
+    Index b = Begin;
+    Index s = Size;
+
+    if(b > 0 && _bit(b - 1)) {
+        const Index L = _tag(b - 1);
+        if(_fb[L].begin + _fb[L].size == b) {
+            _bin_remove(L);
+            _unmark(L);
+            b  = _fb[L].begin;
+            s += _fb[L].size;
+            _drop_record(L);
+        }
+    }
+
+    const Index e = Begin + Size;
+    if(e < _pool_size() && _bit(e)) {
+        const Index R = _tag(e);
+        if(_fb[R].begin == e) {
+            _bin_remove(R);
+            _unmark(R);
+            s += _fb[R].size;
+            _drop_record(R);
+        }
+    }
+
+    const Index id = _new_record(b, s);
+    _mark(id);
+    _bin_insert(id);
+}
+
+
+DCSR_T
+void DCSR::_reset_free_space() {
+    _fb.clear();
+    _fb_unused.clear();
+    _small_head.fill(INDEX_INVALID);
+    _small_mask = 0;
+    _large_head.clear();
+}
+
+#pragma endregion Internal_FreeSpace
+
+
+
 };
 
+#undef DCSR
+#undef DCSR_T

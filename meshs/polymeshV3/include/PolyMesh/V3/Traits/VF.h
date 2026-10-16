@@ -56,65 +56,48 @@ concept VF_InternalC = requires(
 
 
 
-template<typename IndexT, typename BinSizeT, typename MeshT = void>
-struct VF_Ragged_Matrix {
+template<typename IndexT, typename MeshT = void>
+struct VF_D_Ragged_Matrix {
 private:
     friend MeshT;
-
+ 
 public:
     using Index = IndexT;
     static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
-
+ 
 private:
-    using _Matrix = D_Ragged_Matrix<Index, Index, BinSizeT>;
+    using _Matrix = D_Ragged_Matrix<Index, Index, false>;
     _Matrix _data;
-
-    using Group_View = _Matrix::RowView;
-
+    using Group_View = typename _Matrix::View;
+ 
 public:
-    using Const_Group_View = _Matrix::Const_RowView;
+    using Const_Group_View = typename _Matrix::Const_View;
+ 
+    VF_D_Ragged_Matrix(float Reserve_Perz = 0.2): _data(0.2f, 0.4f, 6) {}
 
-
-public:
-    VF_Ragged_Matrix(float Reserve_Perz = 0.2):
-        _data(0, Reserve_Perz)
-    {}
-
-    
+    VF_D_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2f):
+        _data(Row_Sizes, Reserve_Perz, Reserve_Perz, 6) {}
+ 
     Const_Group_View get_faces(Index v0) const { return _data.row(v0); }
-
-
+ 
     bool vertex_is_next_to_face(Index v0, Index f0) const {
-        for(auto f : get_faces(v0)) {
-            if(f == f0) return true;
-        }
+        for (auto f : get_faces(v0)) if (f == f0) return true;
         return false;
     }
-
+ 
     bool is_vertex_valid(Index v0) const { return _data.is_valid(v0); }
-
-
+ 
 private:
     Group_View get_faces(Index v0) { return _data.row(v0); }
-
     Index face_append(Index v0, Index f0) { return _data.row_append(v0, f0); }
-
     void face_remove_swap(Index v0, Index slot) { _data.row_remove_swap(v0, slot); }
-
-    
     void set_row_valid(Index v0) { _data.reinit_row(v0); }
-
-    void set_row_invalid(Index v0) {  _data.delete_row(v0); }
-
-
+    void set_row_invalid(Index v0) { _data.set_invalid(v0); }
     void reserve(Index size) { _data.reserve(size); }
-
     void set_largest_vertex_idx(Index v_idx) { _data.grow_row_count(v_idx); }
-    
-
-    // TODO
-    void compact(std::span<const Index> new_order, bool rebuild_reserve) {}
+    void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
 };
+
 
 
 
@@ -144,8 +127,11 @@ public:
 
 public:
     VF_Append_Ragged_Matrix(float Reserve_Perz = 0.2):
-        _data(0.2f, 0.4f, 6)
+        _data(Reserve_Perz, Reserve_Perz, 6)
     {}
+    
+    VF_Append_Ragged_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2):
+        _data(Row_Sizes, Reserve_Perz, Reserve_Perz, 3) {}
 
     
     Const_Group_View get_faces(Index v0) const { return _data.row(v0); }
@@ -210,7 +196,11 @@ private:
 public:
     using Const_Group_View = typename _Matrix::Const_View;
 
-    VF_Vec_Vec_Matrix(float Reserve_Perz = 0.2): _data(0.2f, 0.4f, 6) {}
+    VF_Vec_Vec_Matrix(float Reserve_Perz = 0.2): 
+        _data(Reserve_Perz, 6) {}
+
+    VF_Vec_Vec_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2):
+        _data(Row_Sizes, Reserve_Perz, 3) {}
 
     Const_Group_View get_faces(Index v0) const { return _data.row(v0); }
 
@@ -259,7 +249,11 @@ private:
 public:
     using Const_Group_View = typename _Matrix::Const_View;
 
-    VF_Vec_Eigen_Matrix(float Reserve_Perz = 0.2): _data(0.2f, 0.4f, 6) {}
+    VF_Vec_Eigen_Matrix(float Reserve_Perz = 0.2): 
+        _data(0.2f, 0.4f, 6) {}
+
+    VF_Vec_Eigen_Matrix(const std::vector<Index>& Row_Sizes, float Reserve_Perz = 0.2):
+        _data(Row_Sizes, Reserve_Perz, 3) {}
 
     Const_Group_View get_faces(Index v0) const { return _data.row(v0); }
 
