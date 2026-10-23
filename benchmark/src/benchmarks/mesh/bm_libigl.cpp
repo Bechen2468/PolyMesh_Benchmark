@@ -1,11 +1,8 @@
 #include "benchmarks/mesh/bm_libigl.h"
 
 
-
 void Benchmark_Libigl_V2_5::_circular() {
-    // vertex -> faces, as a flat CSR list (VF) + offsets (NI)
-    Eigen::VectorXi VF, NI;
-    igl::vertex_triangle_adjacency(F, (int)V.rows(), VF, NI);
+    _ensure_VF();
 
     int counter = 0;
 
@@ -13,7 +10,6 @@ void Benchmark_Libigl_V2_5::_circular() {
         for (int k = NI(v); k < NI(v + 1); ++k)
             counter += (VF(k) >= 0);
 
-            
     for (int f = 0; f < F.rows(); ++f)
         for (int c = 0; c < 3; ++c)
             counter -= (F(f, c) >= 0);
@@ -34,6 +30,7 @@ void Benchmark_Libigl_V2_5::_barycenter() {
 
 
 void Benchmark_Libigl_V2_5::_normal() {
+    // per_vertex_normals scatters the face normals onto their vertices, no adjacency needed
     N_V.resize(V.rows(), 3);
     N_F.resize(F.rows(), 3);
 
@@ -44,17 +41,15 @@ void Benchmark_Libigl_V2_5::_normal() {
 
 
 void Benchmark_Libigl_V2_5::_smoothing() {
-    std::vector<std::vector<int>> A;      // vertex -> neighbor vertices
-    igl::adjacency_list(F, A);
-    std::vector<bool> border = igl::is_border_vertex(F);
+    _ensure_VV();
 
     // In place, vertex by vertex (later vertices see already-smoothed positions),
     for (int v = 0; v < V.rows(); ++v) {
-        if (border[v] || A[v].empty()) continue;
+        if (B[v] || VV[v].empty()) continue;
 
         Vertex p = Vertex::Zero();
-        for (int n : A[v]) p += V.row(n);
-        V.row(v) = p / Scalar(A[v].size());
+        for (int n : VV[v]) p += V.row(n);
+        V.row(v) = p / Scalar(VV[v].size());
     }
 }
 
@@ -67,28 +62,24 @@ void Benchmark_Libigl_V2_5::_subdivision() {
     //   - every old interior edge ends up flipped, i.e. replaced by the edge between
     //     the two adjacent centroids
     //   - old boundary edges stay, connected to the centroid of their face
+    _ensure_VV();
+    _ensure_EF();
+
     const int nV = (int)V.rows();
     const int nF = (int)F.rows();
-
-    std::vector<std::vector<int>> A;
-    igl::adjacency_list(F, A);
-    std::vector<bool> border = igl::is_border_vertex(F);
-
-    Eigen::MatrixXi TT, TTi;               // TT(f,e): face across edge e of f (-1 = boundary)
-    igl::triangle_triangle_adjacency(F, TT, TTi);
 
     MatV Vn(nV + nF, 3);
 
     // new positions of old vertices (computed from old positions only)
     for (int v = 0; v < nV; ++v) {
-        const Scalar n = (Scalar)A[v].size();
-        if (border[v] || A[v].empty()) {
+        const Scalar n = (Scalar)VV[v].size();
+        if (B[v] || VV[v].empty()) {
             Vn.row(v) = V.row(v);
             continue;
         }
         const Scalar alpha = (4.0 - 2.0 * std::cos(2.0 * M_PI / n)) / 9.0;
         Vertex p = Vertex::Zero();
-        for (int nb : A[v]) p += V.row(nb);
+        for (int nb : VV[v]) p += V.row(nb);
         Vn.row(v) = (1.0 - alpha) * V.row(v) + (alpha / n) * p;
     }
 
@@ -96,13 +87,13 @@ void Benchmark_Libigl_V2_5::_subdivision() {
     for (int f = 0; f < nF; ++f)
         Vn.row(nV + f) = (V.row(F(f, 0)) + V.row(F(f, 1)) + V.row(F(f, 2))) / 3.0;
 
-    // one new triangle per directed edge a->b of face f
     MatF Fn(3 * nF, 3);
     for (int f = 0; f < nF; ++f) {
         for (int e = 0; e < 3; ++e) {
-            const int a = F(f, e);
-            const int b = F(f, (e + 1) % 3);
-            const int g = TT(f, e);
+            const int a  = F(f, e);
+            const int b  = F(f, (e + 1) % 3);
+            const int ei = EMAP(f + ((e + 2) % 3) * nF);
+            const int g  = (EF(ei, 0) == f) ? EF(ei, 1) : EF(ei, 0);   // face across the edge, -1 = boundary
             if (g < 0) Fn.row(3 * f + e) << a, b, nV + f;          // boundary: keep edge
             else       Fn.row(3 * f + e) << a, nV + g, nV + f;     // flipped interior edge
         }
@@ -110,6 +101,8 @@ void Benchmark_Libigl_V2_5::_subdivision() {
 
     V.swap(Vn);
     F.swap(Fn);
+
+    _relations_changed();
 }
 
 
@@ -118,7 +111,6 @@ void Benchmark_Libigl_V2_5::_collapse() {
     const int nV = (int)V.rows();
     const int nF = (int)F.rows();
 
-    // split every face at the origin (same as OpenMesh: new vertices at (0,0,0))
     {
         MatV Vs(nV + nF, 3);
         Vs.topRows(nV) = V;
@@ -137,10 +129,9 @@ void Benchmark_Libigl_V2_5::_collapse() {
 
     Eigen::MatrixXd Vd = V.cast<double>();
 
-    // libigls collapse needs the edge topology
-    Eigen::MatrixXi E, EF, EI;
-    Eigen::VectorXi EMAP;
-    igl::edge_flaps(F, E, EMAP, EF, EI);
+    Eigen::MatrixXi cE, cEF, cEI;
+    Eigen::VectorXi cEMAP;
+    igl::edge_flaps(F, cE, cEMAP, cEF, cEI);
     const int nFs = (int)F.rows();
 
     // collapsing one edge of every new vertex into its neighbour
@@ -151,16 +142,16 @@ void Benchmark_Libigl_V2_5::_collapse() {
 
         int e = -1;
         for (int c = 0; c < 3; ++c) {
-            const int ec = EMAP(f + c * nFs);
-            if (E(ec, 0) == v || E(ec, 1) == v) { e = ec; break; }
+            const int ec = cEMAP(f + c * nFs);
+            if (cE(ec, 0) == v || cE(ec, 1) == v) { e = ec; break; }
         }
         if (e < 0) continue;
 
-        const int other = (E(e, 0) == v) ? E(e, 1) : E(e, 0);
+        const int other = (cE(e, 0) == v) ? cE(e, 1) : cE(e, 0);
         Eigen::RowVectorXd p = Vd.row(other);   // merge into the neighbour, keep its position
 
         int e1, e2, f1, f2;
-        igl::collapse_edge(e, p, Vd, F, E, EMAP, EF, EI, e1, e2, f1, f2);
+        igl::collapse_edge(e, p, Vd, F, cE, cEMAP, cEF, cEI, e1, e2, f1, f2);
     }
 
     // removing deleted items (counterpart of garbage_collection())
@@ -183,6 +174,8 @@ void Benchmark_Libigl_V2_5::_collapse() {
         V = NVd.cast<Scalar>();
         F.swap(NF);
     }
+
+    _relations_changed();
 }
 
 
@@ -200,3 +193,4 @@ void Benchmark_Libigl_V2_5::_render_export(std::vector<float>& out_positions, st
         for (int c = 0; c < 3; ++c)
             out_indices.push_back(F(f, c));
 }
+

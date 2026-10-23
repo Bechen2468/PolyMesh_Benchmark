@@ -24,6 +24,7 @@ protected:
     pmp::FaceProperty<pmp::Point>   fnormals;
 
 
+
 protected:
     std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
         mesh.clear();
