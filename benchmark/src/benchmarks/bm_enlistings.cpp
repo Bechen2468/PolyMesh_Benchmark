@@ -211,15 +211,15 @@ static const std::vector<int64_t> VALUES_EF     = {4};
 static const std::vector<int64_t> VALUES_0_1    = {0, 1};
 static const std::vector<int64_t> VALUES_ITER_ALL = {0, 1, 2, 3, 4};
 
-
-REGISTER("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, run_load, VALUES_ITER_ALL)
+/*
+REGISTER("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, run_load, VALUES_ALL)
 REGISTER("SurfaceMesh_/V03/Load", Benchmark_Pmp_Lib__V03, run_load, VALUES_ALL)
 REGISTER("Libigl______/V25/Load", Benchmark_Libigl_V2_5, run_load, VALUES_ITER_ALL)
 REGISTER_T("D_Ragged____/V03/Load", Benchmark_PolyMesh_V03, Traits_D_Ragged, run_load, VALUES_ITER_ALL)
-REGISTER_T("VecVec______/V03/Load", Benchmark_PolyMesh_V03, Traits_VecVec, run_load, VALUES_EF)
+REGISTER_T("VecVec______/V03/Load", Benchmark_PolyMesh_V03, Traits_VecVec, run_load, VALUES_ITER_ALL)
 REGISTER_T("Apd_Ragged__/V03/Load", Benchmark_PolyMesh_V03, Traits_Append, run_load, VALUES_ITER_ALL)
 REGISTER_T("Vec_Eigen___/V03/Load", Benchmark_PolyMesh_V03, Traits_VecEigen, run_load, VALUES_ITER_ALL)
-
+*/
 
 REGISTER("OpenMesh____/V11/Circular", Benchmark_OpenMesh_V11, run_circular, VALUES_ALL)
 REGISTER("SurfaceMesh_/V03/Circular", Benchmark_Pmp_Lib__V03, run_circular, VALUES_ALL)
