@@ -179,3 +179,25 @@ Apd_Ragged__/V03/Load/|V|:300000/Full_Load:4/iterations:1     416519 us
 
 
 
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+OpenMesh____/V11/Subdivision/|V|:1000000/Full_Load:1/iterations:3       749720 us       749695 us            3          6        100         554        365
+SurfaceMesh_/V03/Subdivision/|V|:1000000/Full_Load:1/iterations:3       725762 us       725701 us            3          6         97         518        201
+Libigl Mem usage (MB): Core 35.9726 | VV_HE 86.7822 | VF 27.9787 | EF 95.9268 | All 246.66
+Libigl______/V25/Subdivision/|V|:1000000/Full_Load:1/iterations:3      4065944 us      3992193 us            3          6        542         909        465
+D_Ragged____/V03/Subdivision/|V|:1000000/Full_Load:1/iterations:3       734337 us       734155 us            3          6         98         574        461
+VecVec______/V03/Subdivision/|V|:1000000/Full_Load:1/iterations:3       593733 us       593658 us            3          6         79         718        566
+Apd_Ragged__/V03/Subdivision/|V|:1000000/Full_Load:1/iterations:3       390303 us       390174 us            3          6         52         442        356
+Apd_Ragged_V/V03/Subdivision/|V|:1000000/Full_Load:10/iterations:3     1057206 us      1056900 us            3          6        141         392        327
+Vec_Eigen___/V03/Subdivision/|V|:1000000/Full_Load:1/iterations:3       587141 us       587085 us            3          6         78         627        360
+-----------------------------------------------------------------------------------------------------------------------------------------------
+OpenMesh____/V11/Collapse/|V|:1000000/Full_Load:1/iterations:3          880564 us       880499 us            3          7        100         611        369
+SurfaceMesh_/V03/Collapse/|V|:1000000/Full_Load:1/iterations:3          863547 us       863469 us            3          7         98         178        170
+Libigl Mem usage (MB): Core 35.9726 | VV_HE 86.7822 | VF 27.9787 | EF 95.9268 | All 246.66
+Libigl______/V25/Collapse/|V|:1000000/Full_Load:1/iterations:3         5296009 us      5249827 us            3          7        601         343        299
+D_Ragged____/V03/Collapse/|V|:1000000/Full_Load:1/iterations:3         1850964 us      1850674 us            3          7        210         463        413
+VecVec______/V03/Collapse/|V|:1000000/Full_Load:1/iterations:3         2083965 us      2083614 us            3          7        237         692        542
+Apd_Ragged__/V03/Collapse/|V|:1000000/Full_Load:1/iterations:3         1417284 us      1417064 us            3          7        161         385        330
+Apd_Ragged_V/V03/Collapse/|V|:1000000/Full_Load:10/iterations:3        3632936 us      3626230 us            3          7        413         416        377
+Vec_Eigen___/V03/Collapse/|V|:1000000/Full_Load:1/iterations:3         1419873 us      1418936 us            3          7        161         196        224

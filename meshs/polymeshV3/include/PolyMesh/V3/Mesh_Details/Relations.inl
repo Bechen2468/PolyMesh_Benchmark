@@ -14,39 +14,29 @@ namespace PolyMesh::V3 {
 
 PM_T
 void PM::set_validate_modifications(bool flag) {
-    _update_VV_HE = flag;
-    _update_EF = flag;
-    _update_VF = flag;
     _validate_modifications = flag;
-    if(flag) { 
-        VV_HE(); 
-        EF(); 
-        VF();
-    }
+    if(flag) VF();
 }
 
 
 PM_T
 void PM::set_update_VV_HE(bool flag) {
     _update_VV_HE = flag;
-    if(!flag) _validate_modifications = false;
-    else VV_HE();
+    if(flag) VV_HE();
 }
 
 
 PM_T
 void PM::set_update_EF(bool flag) {
     _update_EF = flag;
-    if(!flag) _validate_modifications = false;
-    else EF();
+    if(flag) EF();
 }
 
 
 PM_T
 void PM::set_update_VF(bool flag) {
     _update_VF = flag;
-    if(!flag) _validate_modifications = false;
-    else VF();
+    if(flag) VF();
 }
 
 
@@ -55,7 +45,7 @@ void PM::set_update_VF(bool flag) {
 PM_T
 const PM::T::VV_HE& PM::VV_HE() {
     if(!_relations.is_valid(CacheFlag::VV_HE)) {
-       _VV_HE_build();
+        _VV_HE_build();
         _relations.set_valid(CacheFlag::VV_HE);
     }
     return _relations.VV_HE;

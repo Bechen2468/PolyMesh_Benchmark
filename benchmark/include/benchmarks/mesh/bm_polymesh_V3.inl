@@ -462,18 +462,6 @@ void Benchmark_PolyMesh_V03<TraitsT>::_smoothing() {
 template<PolyMesh::V3::TraitsC TraitsT>
 void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
     using Index = typename Mesh::Index;
-    
-    // setting update settings
-    if(VALIDATE_MESH) {
-        // sets all to be updated internally
-        mesh.set_validate_modifications(true);
-    }
-    else {
-        mesh.set_update_EF(false);
-        mesh.set_update_VV_HE(false);
-        mesh.set_update_VF(false);
-    }
-
 
     auto& verts = mesh.vertices();
     auto& faces = mesh.faces();
@@ -546,6 +534,11 @@ void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
         centroid_vid[fid] = mesh.add_vertex(centroids[fid]);
     }
 
+    // 6. delete original faces, apply new vertex positions
+    for(Index fid : original_faces) {
+        mesh.delete_face(fid);
+    }
+    
     // 5. build final triangles directly from cached edge/centroid-vertex data
     for(const auto& e : edges) {
         bool has_left = e.f_left  != Mesh::T::INDEX_INVALID;
@@ -569,10 +562,7 @@ void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
         // has neither: shouldn't occur for a valid edge, skip defensively
     }
 
-    // 6. delete original faces, apply new vertex positions
-    for(Index fid : original_faces) {
-        mesh.delete_face(fid);
-    }
+
 
     for(Index v : original_vertices) {
         auto row = verts[v];
@@ -582,8 +572,9 @@ void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
     }
     
     mesh.compact(false, false);
-    //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+    std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
+
 
 
 
@@ -591,17 +582,8 @@ template<PolyMesh::V3::TraitsC TraitsT>
 void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
     using Index = typename Mesh::Index;
 
-    // setting update settings
-    if(VALIDATE_MESH) {
-        // sets all to be updated internally
-        mesh.set_validate_modifications(true);
-    }
-    else {
-        mesh.set_update_EF(false);
-        mesh.set_update_VV_HE(false);
-        mesh.set_update_VF(true);
-    }
-    
+    mesh.set_update_VF(true);
+        //TODO: TEST SETTINGS
 
     auto& faces = mesh.faces();
 
@@ -637,7 +619,7 @@ void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
     }
 
     mesh.compact(false, false);
-    //std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+    std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
 }
 
 

@@ -40,13 +40,17 @@ protected:
 
     void load_mesh_from_storage(int load_full) override {
         mesh = mesh_storage;
-        //mesh.set_validate_modifications(false);
-
+        
         // 1 for load full,  10 for run validation checks
         if(load_full == 1 || load_full == 10 || load_full == 2) mesh.VV_HE();
         if(load_full == 1 || load_full == 10 || load_full == 3) mesh.VF();
         if(load_full == 1 || load_full == 10 || load_full == 4) mesh.EF();
         if(load_full == 0) mesh.relations().invalidate(PolyMesh::V3::CacheFlag::ALL);
+
+        mesh.set_update_EF(false);
+        mesh.set_update_VF(false);
+        mesh.set_update_VV_HE(false);
+        mesh.set_validate_modifications(load_full == 10);
     }
 
     

@@ -26,21 +26,14 @@ PM::Index PM::add_vertex(std::span<const Scalar, 3> Vert) {
     Index idx = _v.add(Vert);
 
     // update relationmatrices
-    if(_validate_modifications) {
-        _relations.EF.set_largest_vertex_idx(idx + 1);
-        _relations.VV_HE.set_largest_vertex_idx(idx + 1);
-        _relations.VF.set_largest_vertex_idx(idx + 1);
-    }
-    else {
-        if(_update_EF) _relations.EF.set_largest_vertex_idx(idx + 1);
-        else _relations.invalidate(CacheFlag::EF);
+    if(_update_EF) _relations.EF.set_largest_vertex_idx(idx + 1);
+    else _relations.invalidate(CacheFlag::EF);
 
-        if(_update_VV_HE) _relations.VV_HE.set_largest_vertex_idx(idx + 1);
-        else _relations.invalidate(CacheFlag::VV_HE);
+    if(_update_VV_HE) _relations.VV_HE.set_largest_vertex_idx(idx + 1);
+    else _relations.invalidate(CacheFlag::VV_HE);
 
-        if(_update_VF) _relations.VF.set_largest_vertex_idx(idx + 1);
-        else _relations.invalidate(CacheFlag::VF);
-    }
+    if(_validate_modifications || _update_VF) _relations.VF.set_largest_vertex_idx(idx + 1);
+    else _relations.invalidate(CacheFlag::VF);
 
     return idx; 
 }
@@ -59,8 +52,9 @@ PM_T
 void PM::delete_vertex(Index Idx) {
     // check if any faces still reference it
     if(_validate_modifications) {
+        thread_local std::vector<Index> incident;   // reused, no allocation after first call
         auto incident_view = VF().get_faces(Idx);
-        std::vector<Index> incident(incident_view.begin(), incident_view.end());
+        incident.assign(incident_view.begin(), incident_view.end());
 
         for (Index f_idx : incident) delete_face(f_idx);
     }
@@ -76,21 +70,14 @@ PM::Index PM::add_face(std::span<const Index> Face) {
 
     Index f_idx = _f.add(Face);
 
-    if(_validate_modifications) {
-        _EF_add_face(Face, f_idx);
-        _VV_HE_add_face(Face, f_idx);
-        _VF_add_face(Face, f_idx);
-    }
-    else {
-        if(_update_EF) _EF_add_face(Face, f_idx);
-        else _relations.invalidate(CacheFlag::EF);
+    if(_update_EF) _EF_add_face(Face, f_idx);
+    else _relations.invalidate(CacheFlag::EF);
 
-        if(_update_VV_HE) _VV_HE_add_face(Face, f_idx);
-        else _relations.invalidate(CacheFlag::VV_HE);
+    if(_update_VV_HE) _VV_HE_add_face(Face, f_idx);
+    else _relations.invalidate(CacheFlag::VV_HE);
 
-        if(_update_VF) _VF_add_face(Face, f_idx);
-        else _relations.invalidate(CacheFlag::VF);
-    }
+    if(_validate_modifications || _update_VF) _VF_add_face(Face, f_idx);
+    else _relations.invalidate(CacheFlag::VF);
 
     return f_idx;
 }
@@ -106,21 +93,14 @@ PM_T
 void PM::delete_face(Index Idx) {
     auto face = faces()[Idx];
 
-    if(_validate_modifications) {
-        _EF_remove_face(face, Idx);
-        _VV_HE_remove_face(face, Idx);
-        _VF_remove_face(face, Idx);
-    }
-    else {
-        if(_update_EF) _EF_remove_face(face, Idx);
-        else _relations.invalidate(CacheFlag::EF);
+    if(_update_EF) _EF_remove_face(face, Idx);
+    else _relations.invalidate(CacheFlag::EF);
 
-        if(_update_VV_HE) _VV_HE_remove_face(face, Idx);
-        else _relations.invalidate(CacheFlag::VV_HE);
+    if(_update_VV_HE) _VV_HE_remove_face(face, Idx);
+    else _relations.invalidate(CacheFlag::VV_HE);
 
-        if(_update_VF) _VF_remove_face(face, Idx);
-        else _relations.invalidate(CacheFlag::VF);
-    }
+    if(_validate_modifications || _update_VF) _VF_remove_face(face, Idx);
+    else _relations.invalidate(CacheFlag::VF);
 
     _f.remove(Idx);
 }
@@ -130,18 +110,12 @@ void PM::delete_face(Index Idx) {
 PM_T
 [[nodiscard]] bool PM::is_face_addable(std::span<const Index> Face) {
     // -------------------------------------------------------------------------
-    // Init and helper
+    // Init
     // -------------------------------------------------------------------------
-    const typename T::VV_HE& vv_he = VV_HE();
     const size_t n = Face.size();
     if(n < 3) return false; // Minimal face must be a triangle
 
-    // Helper: Returns true if directed edge (from -> to) exists in the mesh
-    auto has_edge = [&](Index from, Index to) -> bool {
-        if(from == T::INDEX_INVALID || to == T::INDEX_INVALID) return false;
-        for(auto v : vv_he.get_edges(from)) if (v == to) return true;
-        return false;
-    };
+    const typename T::VF& vf = VF();
 
     // -------------------------------------------------------------------------
     // CHECK 1: Duplicate vertices
@@ -155,41 +129,44 @@ PM_T
     }
 
     // -------------------------------------------------------------------------
-    // CHECK 2: Directed Edge Saturation
-    // Each Directed Edge can only be used by one face
-    // Cant add already existing edge
-    // Note: Passing guarantees that every directed edge in Face is currently unused.
+    // CHECK 2 + 3, one pass per vertex of the new face
+    // outs: vertices v points to (v -> w exists), ins: vertices pointing to v (w -> v exists),
+    // both collected from the faces around v
     // -------------------------------------------------------------------------
+    thread_local std::vector<Index> outs, ins;   // no allocation after the first call
+
     for(size_t i = 0; i < n; ++i) {
-        Index va = Face[i];
-        Index vb = Face[(i + 1) % n];
+        const Index v_curr = Face[i];
+        const Index v_next = Face[(i + 1) % n];
 
-        if(has_edge(va, vb)) return false;
-    }
+        outs.clear(); ins.clear();
+        for(Index f : vf.get_faces(v_curr)) {
+            if(f == T::INDEX_INVALID || !_f.is_valid(f)) continue;
 
-    // -------------------------------------------------------------------------
-    // CHECK 3: Vertex Star Manifold Topo
-    // Evaluate local topological validity around every vertex in the new face
-    // -------------------------------------------------------------------------
-    for(size_t i = 0; i < n; ++i) {
-        Index v_curr = Face[i];
-        auto row = vv_he.get_edges(v_curr);
-        if(row.size() == 0) continue;
-
-        size_t boundary_count = 0;
-        for(auto v : row) {
-            if (EF().edge_face_count(v_curr, v) < 2) boundary_count++;
+            auto face = _f[f];
+            const size_t m = face.size();
+            for(size_t k = 0; k < m; ++k) {
+                if(face[k] == v_curr) {
+                    ins.push_back(face[(k + m - 1) % m]);
+                    outs.push_back(face[(k + 1) % m]);
+                    break;
+                }
+            }
         }
-        if (boundary_count == 0) return false;
+        if(outs.empty()) continue; // isolated vertex, nothing to check
 
-        Index v_prev = Face[(i + n - 1) % n];
-        Index v_next = Face[(i + 1) % n];
-        bool reverse_prev_edge_exists = has_edge(v_curr, v_prev);
-        bool reverse_next_edge_exists = has_edge(v_next, v_curr);
+        // CHECK 2: Directed Edge Saturation
+        // the new face uses v_curr -> v_next, which must not exist yet
+        if(std::find(outs.begin(), outs.end(), v_next) != outs.end()) return false;
 
-        if(!reverse_prev_edge_exists && !reverse_next_edge_exists && boundary_count > 1) {
-            return false;
+        // CHECK 3: Vertex Star
+        // outgoing edge v -> w is boundary if w -> v does not exist;
+        // a closed star (no boundary edge left) can't take another face
+        bool has_boundary = false;
+        for(Index w : outs) {
+            if(std::find(ins.begin(), ins.end(), w) == ins.end()) { has_boundary = true; break; }
         }
+        if(!has_boundary) return false;
     }
 
     return true;
@@ -318,10 +295,10 @@ typename PM::Index PM::split(Index F, std::span<const Scalar, 3> P) {
     _storage_vf_adds.emplace_back(new_v, f_new1);
     _storage_vf_adds.emplace_back(new_v, f_new2);
 
-    if(_validate_modifications || _update_VV_HE) _VV_HE_apply(_storage_edge_removes, _storage_edge_adds);
+    if(_update_VV_HE) _VV_HE_apply(_storage_edge_removes, _storage_edge_adds);
     else _relations.invalidate(CacheFlag::VV_HE);
 
-    if(_validate_modifications || _update_EF) _EF_apply(_storage_edge_removes, _storage_edge_adds, _storage_edge_edits);
+    if(_update_EF) _EF_apply(_storage_edge_removes, _storage_edge_adds, _storage_edge_edits);
     else _relations.invalidate(CacheFlag::EF);
 
     if(_validate_modifications || _update_VF) _VF_apply(_storage_vf_removes, _storage_vf_adds);
@@ -430,10 +407,10 @@ void PM::collapse(Index To_Vertex, Index From_Vertex) {
 
 
     // apply to all matrices
-    if(_validate_modifications || _update_VV_HE) _VV_HE_apply(edge_removes, edge_adds);
+    if(_update_VV_HE) _VV_HE_apply(edge_removes, edge_adds);
     else _relations.invalidate(CacheFlag::VV_HE);
 
-    if(_validate_modifications || _update_EF) _EF_apply(edge_removes, edge_adds, {});
+    if(_update_EF) _EF_apply(edge_removes, edge_adds, {});
     else _relations.invalidate(CacheFlag::EF);
 
     if(_validate_modifications || _update_VF) _VF_apply(vf_removes, vf_adds);

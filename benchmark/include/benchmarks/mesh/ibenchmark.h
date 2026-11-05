@@ -23,7 +23,7 @@
 #define RANGE_START        1000000
 #define RANGE_END          RANGE_START
 #define RANGE_MULTIPLIER         4
-#define ITERATIONS              3
+#define ITERATIONS               1
 
 
 #define REGISTER(DISPLAY_NAME, FIXTURE, FUNC, FULL_LOAD_VALUES)             \

@@ -38,6 +38,12 @@ public:
 
 private:
     // options
+    //enum VALIDATION_MODE {
+    //    NONE = 0,
+    //    FAST = 1,
+    //    LOW_MEM = 2
+    //};
+    //VALIDATION_MODE _validate_modifications = VALIDATION_MODE.NONE;
     bool _validate_modifications = false;
     bool _update_VV_HE = false;
     bool _update_EF = false;

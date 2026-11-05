@@ -7,7 +7,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 
 cd "$REPO_ROOT/build_Release"
 
-clear
+#clear
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 

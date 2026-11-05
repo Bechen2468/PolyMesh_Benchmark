@@ -43,10 +43,10 @@ SYSTEM_ORDER = list(SYSTEM_LABELS.values())
 # Full_Load numeric value -> display label for the Load benchmark's x-axis.
 FULL_LOAD_LABELS = {
     0: "Core Only",
-    2: "VV-HE",
-    3: "VF",
-    4: "EF",
-    1: "Full",
+    2: "Core + VV-HE",
+    3: "Core + VF",
+    4: "Core + EF",
+    1: "All",
     10: "VALIDATE",
 }
 
@@ -98,6 +98,9 @@ Y_BOTTOM_MARGIN = 1.25
 
 # Figure sizing
 LOAD_FIG_HEIGHT = 3.1
+LOAD_GROUP_WIDTH = 0.84
+LOAD_WIDTH_PER_GROUP = 1.2
+
 OPERATION_FIG_HEIGHT = 2.8
 
 # Width per system for non-Load plots.
@@ -493,11 +496,17 @@ def plot_load(entries, out_dir):
         print("  [skip] Load: no entries found")
         return
 
+    FULL_LOAD_ORDER = list(FULL_LOAD_LABELS.keys())
+
     full_load_values = sorted(
         {
             e["full_load"]
             for e in subset
-        }
+        },
+        key=lambda v: (
+            FULL_LOAD_ORDER.index(v) if v in FULL_LOAD_ORDER else len(FULL_LOAD_ORDER),
+            v,
+        ),
     )
 
     other_systems = order_systems(
@@ -525,7 +534,7 @@ def plot_load(entries, out_dir):
 
     fig_width = max(
         3.8,
-        1.0 * n_groups + 1.5,
+        LOAD_WIDTH_PER_GROUP * n_groups + 1.5,
     )
 
     fig, ax = plt.subplots(
@@ -535,7 +544,7 @@ def plot_load(entries, out_dir):
     x = np.arange(n_groups)
 
     # Total width occupied by all bars in one group.
-    total_group_width = GROUP_WIDTH
+    total_group_width = LOAD_GROUP_WIDTH
 
     # Bars are packed tightly inside the group.
     bar_width = total_group_width / n_systems
