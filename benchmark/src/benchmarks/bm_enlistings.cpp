@@ -238,6 +238,7 @@ REGISTER_T("VecVec______/V03/Circular", Benchmark_PolyMesh_V03, Traits_VecVec, r
 REGISTER_T("Apd_Ragged__/V03/Circular", Benchmark_PolyMesh_V03, Traits_Append, run_circular, VALUES_ALL)
 REGISTER_T("Vec_Eigen___/V03/Circular", Benchmark_PolyMesh_V03, Traits_VecEigen, run_circular, VALUES_ALL)
 
+
 REGISTER("OpenMesh____/V11/Barycenter", Benchmark_OpenMesh_V11, run_barycenter, VALUES_ALL)
 REGISTER("SurfaceMesh_/V03/Barycenter", Benchmark_Pmp_Lib__V03, run_barycenter, VALUES_ALL)
 REGISTER("Libigl______/V25/Barycenter", Benchmark_Libigl_V2_5, run_barycenter, VALUES_ALL)
