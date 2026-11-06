@@ -1,51 +1,52 @@
 #!/usr/bin/env bash
-set -e
-trap 'sudo cpupower frequency-set --governor powersave' EXIT
-
-# ----------------------------------------------------------------------
-# Selection: a benchmark is run if its name contains one string from
-# FILTERS_1 AND one string from FILTERS_2 (plain, case-sensitive substring).
-# Use "" in a list to mean "anything" for that list.
 #
-# Every selected benchmark runs in its OWN process and writes its OWN JSON
-# file, so a crash or out-of-memory kill only loses that one benchmark.
-# ----------------------------------------------------------------------
+# Builds the project and runs EVERY benchmark the binary lists, each in its
+# own process, each writing its own JSON file into one timestamped folder.
+# A crash or out-of-memory kill only loses that one benchmark.
+#
+# Works on Linux and macOS (macOS ships bash 3.2, so no bash-4 features here).
 
-# Keep the slashes: plain "Load" would also match "Full_Load" in every name.
-FILTERS_1=(
-    "/Load/"
-    "/Render_Export/"
-    "/Subdivision/"
-    "/Collapse/"
-)
+set -e
 
-FILTERS_2=(
-    "OpenMesh____"
-    "SurfaceMesh_"
-    "Libigl______"
-    "D_Ragged____"
-    "Apd_Ragged__"
-    "VecVec______"
-    "Vec_Eigen___"
-    "Apd_Ragged_V"
-)
-
-# Extra arguments passed to every run, e.g. "--benchmark_repetitions=3"
+# Extra arguments passed to every run, e.g. EXTRA_ARGS=(--benchmark_repetitions=3)
 EXTRA_ARGS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$SCRIPT_DIR/.."
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BUILD_DIR="$REPO_ROOT/build_Release"
 
 BENCH_BIN="./benchmark/PolyMesh_Benchmark"
 
-cd "$REPO_ROOT/build_Release"
+# ----------------------------------------------------------------------
+# CPU frequency governor (Linux only; macOS has no equivalent)
+# ----------------------------------------------------------------------
+
+USE_CPUPOWER=0
+if [ "$(uname -s)" = "Linux" ] && command -v cpupower >/dev/null 2>&1; then
+    USE_CPUPOWER=1
+    trap 'sudo cpupower frequency-set --governor powersave >/dev/null' EXIT
+else
+    echo "Note: cpupower not available ($(uname -s)), CPU governor is left unchanged."
+fi
+
+# ----------------------------------------------------------------------
+# Build
+# ----------------------------------------------------------------------
+
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 
 #clear
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 
+if [ ! -x "$BENCH_BIN" ]; then
+    echo "!!! Benchmark binary not found: $BUILD_DIR/${BENCH_BIN#./}"
+    exit 1
+fi
+
 # One folder per invocation, so it can be passed straight to the plot scripts.
-RESULTS_DIR="$REPO_ROOT/build_Release/results/$(date +%Y-%m-%d_%H-%M-%S)"
+RESULTS_DIR="$BUILD_DIR/results/$(date +%Y-%m-%d_%H-%M-%S)"
 mkdir -p "$RESULTS_DIR"
 
 # Escape regex special characters so a name matches literally.
@@ -56,65 +57,57 @@ escape_regex() {
 # Turn a benchmark name into a safe file name.
 safe_name() {
     local s
-    s="$(printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g; s/__*/_/g; s/^_//; s/_$//')"
+    s="$(printf '%s' "$1" | sed -e 's/[^A-Za-z0-9._-]/_/g' -e 's/__*/_/g' -e 's/^_//' -e 's/_$//')"
     printf '%s' "${s:-unnamed}"
 }
 
 # ----------------------------------------------------------------------
-# List all benchmarks once and select the ones to run
+# List all benchmarks once
 # ----------------------------------------------------------------------
 
 echo "Listing benchmarks..."
+LIST_ERR="$(mktemp "${TMPDIR:-/tmp}/bench_list.XXXXXX")"
+
 set +e
-LIST_OUTPUT="$("$BENCH_BIN" --benchmark_list_tests 2>&1)"
+LIST_OUTPUT="$("$BENCH_BIN" --benchmark_list_tests 2>"$LIST_ERR")"
 LIST_RC=$?
 set -e
 
-mapfile -t ALL_NAMES < <(printf '%s\n' "$LIST_OUTPUT" | grep -E '^[^[:space:]]+/[^[:space:]]+' || true)
+ALL_NAMES=()
+while IFS= read -r line; do
+    case "$line" in
+        */*) ALL_NAMES+=("$line") ;;   # benchmark names contain a "/"
+    esac
+done <<EOF
+$LIST_OUTPUT
+EOF
 
 if [ ${#ALL_NAMES[@]} -eq 0 ]; then
     echo "!!! The benchmark binary listed no benchmarks (exit code $LIST_RC). Output:"
-    printf '%s\n' "$LIST_OUTPUT" | head -30 | sed 's/^/      /'
+    { printf '%s\n' "$LIST_OUTPUT"; cat "$LIST_ERR"; } | head -30 | sed 's/^/      /'
+    rm -f "$LIST_ERR"
     exit 1
 fi
+rm -f "$LIST_ERR"
 
-echo "Found ${#ALL_NAMES[@]} benchmark(s)"
+total=${#ALL_NAMES[@]}
+echo "Found $total benchmark(s)"
 
-SELECTED=()
-for name in "${ALL_NAMES[@]}"; do
-    hit=0
-    for f1 in "${FILTERS_1[@]}"; do
-        [[ "$name" == *"$f1"* ]] || continue
-        for f2 in "${FILTERS_2[@]}"; do
-            if [[ "$name" == *"$f2"* ]]; then
-                hit=1
-                break 2
-            fi
-        done
-    done
-    [ $hit -eq 1 ] && SELECTED+=("$name")
-done
+# ----------------------------------------------------------------------
+# Run each benchmark in its own process
+# ----------------------------------------------------------------------
 
-if [ ${#SELECTED[@]} -eq 0 ]; then
-    echo "!!! No benchmark matches the filters. Example name: ${ALL_NAMES[0]}"
-    exit 1
+if [ $USE_CPUPOWER -eq 1 ]; then
+    sudo cpupower frequency-set --governor performance >/dev/null
 fi
-
-echo "Selected ${#SELECTED[@]} of ${#ALL_NAMES[@]} benchmark(s)"
-
-# ----------------------------------------------------------------------
-# Run each selected benchmark in its own process
-# ----------------------------------------------------------------------
-
-sudo cpupower frequency-set --governor performance
 
 FAILED=()
-total=${#SELECTED[@]}
 i=0
 
-for name in "${SELECTED[@]}"; do
+for name in "${ALL_NAMES[@]}"; do
     i=$((i + 1))
-    out_file="$RESULTS_DIR/$(safe_name "$name").json"
+    # Index prefix keeps files unique and in run order.
+    out_file="$RESULTS_DIR/$(printf '%04d' "$i")_$(safe_name "$name").json"
 
     echo
     echo "=== [$i/$total] $name"
@@ -139,7 +132,7 @@ for name in "${SELECTED[@]}"; do
     fi
 
     # Sanity check: the JSON must contain a result for this benchmark.
-    if ! grep -q '"run_name"\|"name"' "$out_file" 2>/dev/null; then
+    if ! grep -q '"run_name"' "$out_file" 2>/dev/null; then
         echo "!!! ran but produced no result"
         FAILED+=("$name")
     fi
