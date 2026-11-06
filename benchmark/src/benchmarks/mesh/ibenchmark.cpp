@@ -76,7 +76,7 @@ void IBenchmark::run_memory_usage(benchmark::State& state) {
 
         state.PauseTiming();
         mem.measure_post_run();
-        std::cout << "Loading finished, read memory usage now.." << std::endl;
+        std::cout << "Loading finished, read memory usage now using:  watch -n 0.5 'grep -E \"VmRSS|VmHWM\" /proc/$(pgrep -n PolyMesh_Bench)/status'" << std::endl;
         getchar();
         state.ResumeTiming();
     }
