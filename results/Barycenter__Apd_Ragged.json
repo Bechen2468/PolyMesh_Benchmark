@@ -1,0 +1,152 @@
+{
+  "context": {
+    "date": "2026-11-06T12:28:06+01:00",
+    "host_name": "05023-3",
+    "executable": "./benchmark/PolyMesh_Benchmark",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4061,
+    "cpu_scaling_enabled": false,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 32768,
+        "num_sharing": 2
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 32768,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 262144,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 3,
+        "size": 6291456,
+        "num_sharing": 8
+      }
+    ],
+    "load_avg": [1,0.888184,0.87793],
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:1/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:1/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 8.9385343017056584e+01,
+      "cpu_time": 8.8477666666665172e+01,
+      "time_unit": "us",
+      "mb_post_run": 7.0000000000000000e+00,
+      "mb_pre_run": 7.0000000000000000e+00
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:2/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 1,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:2/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 2.4346446443814784e+03,
+      "cpu_time": 2.4340586666666832e+03,
+      "time_unit": "us",
+      "mb_post_run": 2.0300000000000000e+02,
+      "mb_pre_run": 2.0300000000000000e+02
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:3/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 2,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:3/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.0705760020452242e+03,
+      "cpu_time": 1.0702216666665561e+03,
+      "time_unit": "us",
+      "mb_post_run": 0.0000000000000000e+00,
+      "mb_pre_run": 0.0000000000000000e+00
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:4/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 3,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:4/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.3197496785627056e+03,
+      "cpu_time": 1.3194699999994341e+03,
+      "time_unit": "us",
+      "mb_post_run": 0.0000000000000000e+00,
+      "mb_pre_run": 0.0000000000000000e+00
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:5/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 4,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:5/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 8.8430406661548968e+03,
+      "cpu_time": 8.8422843333339315e+03,
+      "time_unit": "us",
+      "mb_post_run": 6.2600000000000000e+02,
+      "mb_pre_run": 6.2600000000000000e+02
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:6/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 5,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:6/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 5.2585719968192279e+03,
+      "cpu_time": 5.2580670000003474e+03,
+      "time_unit": "us",
+      "mb_post_run": 0.0000000000000000e+00,
+      "mb_pre_run": 0.0000000000000000e+00
+    },
+    {
+      "name": "Apd_Ragged__/V03/Barycenter/|V|:7/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 6,
+      "run_name": "Apd_Ragged__/V03/Barycenter/|V|:7/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.2197186336076507e+04,
+      "cpu_time": 1.2196426333334879e+04,
+      "time_unit": "us",
+      "mb_post_run": 3.0000000000000000e+02,
+      "mb_pre_run": 3.0000000000000000e+02
+    }
+  ]
+}

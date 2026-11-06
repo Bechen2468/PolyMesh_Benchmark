@@ -111,6 +111,10 @@ void Benchmark_Libigl_V2_5::_collapse() {
     const int nV = (int)V.rows();
     const int nF = (int)F.rows();
 
+    // ------------------------------------------------------------------
+    // 1) Split every face into 3 around a new centre vertex.
+    //    The old V / F are released when Vs / Fs leave this scope (after swap).
+    // ------------------------------------------------------------------
     {
         MatV Vs(nV + nF, 3);
         Vs.topRows(nV) = V;
@@ -128,52 +132,74 @@ void Benchmark_Libigl_V2_5::_collapse() {
     }
 
     Eigen::MatrixXd Vd = V.cast<double>();
+    _free(V);
 
-    Eigen::MatrixXi cE, cEF, cEI;
-    Eigen::VectorXi cEMAP;
-    igl::edge_flaps(F, cE, cEMAP, cEF, cEI);
-    const int nFs = (int)F.rows();
+    // ------------------------------------------------------------------
+    // 2) Collapse one edge of every new vertex into its neighbour.
+    //    The edge structures (the largest temporaries) only live in this scope.
+    // ------------------------------------------------------------------
+    {
+        Eigen::MatrixXi cE, cEF, cEI;
+        Eigen::VectorXi cEMAP;
+        igl::edge_flaps(F, cE, cEMAP, cEF, cEI);
+        const int nFs = (int)F.rows();
 
-    // collapsing one edge of every new vertex into its neighbour
-    for (int f = 0; f < nF; ++f) {
-        if (F(f, 0) == IGL_COLLAPSE_EDGE_NULL && F(f, 1) == IGL_COLLAPSE_EDGE_NULL) continue;
-
-        const int v = nV + f;
-
-        int e = -1;
-        for (int c = 0; c < 3; ++c) {
-            const int ec = cEMAP(f + c * nFs);
-            if (cE(ec, 0) == v || cE(ec, 1) == v) { e = ec; break; }
-        }
-        if (e < 0) continue;
-
-        const int other = (cE(e, 0) == v) ? cE(e, 1) : cE(e, 0);
-        Eigen::RowVectorXd p = Vd.row(other);   // merge into the neighbour, keep its position
-
+        Eigen::RowVectorXd p(3);   // allocated once instead of once per collapse
         int e1, e2, f1, f2;
-        igl::collapse_edge(e, p, Vd, F, cE, cEMAP, cEF, cEI, e1, e2, f1, f2);
+
+        for (int f = 0; f < nF; ++f) {
+            if (F(f, 0) == IGL_COLLAPSE_EDGE_NULL && F(f, 1) == IGL_COLLAPSE_EDGE_NULL) continue;
+
+            const int v = nV + f;
+
+            int e = -1;
+            for (int c = 0; c < 3; ++c) {
+                const int ec = cEMAP(f + c * nFs);
+                if (cE(ec, 0) == v || cE(ec, 1) == v) { e = ec; break; }
+            }
+            if (e < 0) continue;
+
+            const int other = (cE(e, 0) == v) ? cE(e, 1) : cE(e, 0);
+            p = Vd.row(other);   // merge into the neighbour, keep its position
+
+            igl::collapse_edge(e, p, Vd, F, cE, cEMAP, cEF, cEI, e1, e2, f1, f2);
+        }
+    }   // cE / cEMAP / cEF / cEI freed here
+
+    // ------------------------------------------------------------------
+    // 3) Remove deleted faces in place (no extra copy of F).
+    // ------------------------------------------------------------------
+    {
+        int w = 0;
+        for (int r = 0; r < (int)F.rows(); ++r) {
+            const bool deleted = F(r, 0) == IGL_COLLAPSE_EDGE_NULL
+                              && F(r, 1) == IGL_COLLAPSE_EDGE_NULL
+                              && F(r, 2) == IGL_COLLAPSE_EDGE_NULL;
+            if (deleted) continue;
+            if (w != r) F.row(w) = F.row(r);
+            ++w;
+        }
+        F.conservativeResize(w, 3);
     }
 
-    // removing deleted items (counterpart of garbage_collection())
+    // ------------------------------------------------------------------
+    // 4) Remove unreferenced vertices (counterpart of garbage_collection()).
+    //    Inputs are freed as soon as the outputs exist.
+    // ------------------------------------------------------------------
     {
-        int keep = 0;
-        for (int r = 0; r < F.rows(); ++r)
-            if (!(F(r, 0) == IGL_COLLAPSE_EDGE_NULL && F(r, 1) == IGL_COLLAPSE_EDGE_NULL && F(r, 2) == IGL_COLLAPSE_EDGE_NULL))
-                ++keep;
-
-        MatF Fc(keep, 3);
-        int w = 0;
-        for (int r = 0; r < F.rows(); ++r)
-            if (!(F(r, 0) == IGL_COLLAPSE_EDGE_NULL && F(r, 1) == IGL_COLLAPSE_EDGE_NULL && F(r, 2) == IGL_COLLAPSE_EDGE_NULL))
-                Fc.row(w++) = F.row(r);
-
         Eigen::MatrixXd NVd;
         MatF NF;
         Eigen::VectorXi I;
-        igl::remove_unreferenced(Vd, Fc, NVd, NF, I);
-        V = NVd.cast<Scalar>();
+        igl::remove_unreferenced(Vd, F, NVd, NF, I);
+
+        _free(Vd);
+        _free(I);
+
         F.swap(NF);
-    }
+        _free(NF);              // old, uncompacted F
+
+        V = NVd.cast<Scalar>();
+    }   // NVd freed here
 
     _relations_changed();
 }
