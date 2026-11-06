@@ -20,10 +20,10 @@
 
 
 
-#define RANGE_START        1000000
-#define RANGE_END          RANGE_START
-#define RANGE_MULTIPLIER         4
-#define ITERATIONS               1
+#define RANGE_START        1
+#define RANGE_END          7
+#define RANGE_MULTIPLIER   1
+#define ITERATIONS         10
 
 
 #define REGISTER(DISPLAY_NAME, FIXTURE, FUNC, FULL_LOAD_VALUES)             \
@@ -34,7 +34,7 @@ BENCHMARK_REGISTER_F(FIXTURE, FUNC)                                         \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
+        benchmark::CreateDenseRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
         FULL_LOAD_VALUES                                                    \
     })                                                                      \
     ->Iterations(ITERATIONS)                                                \
@@ -51,7 +51,7 @@ BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC##_##ID)      \
     ->Name(DISPLAY_NAME)                                                    \
     ->ArgNames({"|V|", "Full_Load"})                                        \
     ->ArgsProduct({                                                         \
-        benchmark::CreateRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
+        benchmark::CreateDenseRange(RANGE_START, RANGE_END, RANGE_MULTIPLIER),   \
         FULL_LOAD_VALUES                                                    \
     })                                                                      \
     ->Iterations(ITERATIONS)                                                \
@@ -65,6 +65,10 @@ BENCHMARK_REGISTER_F(FIXTURE, TRAITS##_##FUNC##_##ID)      \
 #define REGISTER_T(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES) \
     REGISTER_T_ID(DISPLAY_NAME, FIXTURE, TRAITS, FUNC, FULL_LOAD_VALUES, __COUNTER__)
 
+
+
+
+    
 
 struct Memory_Observer {
     size_t _base = 0;
@@ -111,6 +115,11 @@ struct Memory_Observer {
 
 
 
+
+
+
+
+
 class IBenchmark : public benchmark::Fixture {
     enum Mesh_Type : size_t {
         Rand_Sphere = 0,
@@ -122,14 +131,14 @@ protected:
     bool _setUpIsFirst = true;
     Memory_Observer mem;
 
-    size_t V, F, E;
-
     std::string file_path;
+    std::vector<std::string> mesh_paths;
+
 
 public:
     void SetUp(benchmark::State& state) override {
 #if defined(__linux__)
-        malloc_trim(0); // Forces glibc to release free arenas back to OS
+        malloc_trim(0); // Forces glibc to release free blocks back to OS
 #endif
         size_t n = state.range(0);  // mesh size
         size_t full_load = state.range(1);  // pre load full
@@ -140,7 +149,7 @@ public:
         if(n == RANGE_START) {
             if(_setUpIsFirst && (
                     RANGE_START != RANGE_END ||
-                    (state.name().find("OpenMesh") != std::string::npos && state.name().find("Load") == std::string::npos)
+                    (state.name().find("OpenMesh") != std::string::npos)
             )) {
                 std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------" << std::endl;
             }
@@ -149,33 +158,34 @@ public:
             _setUpIsFirst = true;
         }
         
+        
         // build mesh
-        Mesh_Type mesh_type = Mesh_Type::Rand_Sphere;
-        if(state.name().find("Quad") != std::string::npos) mesh_type = Mesh_Type::Quad;
-        if(state.name().find("Dual") != std::string::npos) mesh_type = Mesh_Type::Dual;
-        
-        file_path = "./off_files/" 
-            + (std::array<std::string, 3>{"convex", "quad", "dual"}[mesh_type]) 
-            + std::to_string(n) + ".off";
+        if(n >= 100) {
+            Mesh_Type mesh_type = Mesh_Type::Rand_Sphere;
+            if(state.name().find("Quad") != std::string::npos) mesh_type = Mesh_Type::Quad;
+            if(state.name().find("Dual") != std::string::npos) mesh_type = Mesh_Type::Dual;
             
-        build_mesh(file_path, Rand_Sphere, n);
+            file_path = std::string(ROOT_DIR) + "/off_files/" + (std::array<std::string, 3>{"convex", "quad", "dual"}[mesh_type]) + std::to_string(n) + ".off";
+            build_mesh(Rand_Sphere, n);
+        }
 
-        
-        if(file_path, state.name().find("Load") == std::string::npos) {
-            std::vector<size_t> mesh_Sizes = load_mesh_storage(file_path, state.range(1));
+        // load all meshs from ./off_files
+        load_meshlist();
 
-            V = mesh_Sizes[0];
-            F = mesh_Sizes[1];
-            E = mesh_Sizes[2];
 
-            if(state.name().find("Rand") != std::string::npos) {
-                _rand_v = my_utils::num::generate_random_indices(mesh_Sizes[0]);
-                _rand_f = my_utils::num::generate_random_indices(mesh_Sizes[1]);
-                _rand_e = my_utils::num::generate_random_indices(mesh_Sizes[2]);
-            }
+        if(n < 100) {
+            file_path = mesh_paths[(n-1) % mesh_paths.size()];
+        }
+
+
+        // preload mesh if not memory specific benmchmark
+        if(state.name().find("Load") == std::string::npos && state.name().find("Memory") == std::string::npos) {
+            load_mesh_storage(file_path, state.range(1));
         }
         mem.measure_base();
     }
+
+
 
 
     void TearDown(benchmark::State& state) override {
@@ -191,6 +201,7 @@ public:
 
 
     void run_load(benchmark::State& state);
+    void run_memory_usage(benchmark::State& state);
 
     void run_iterate_V_raw(benchmark::State& state);
     void run_iterate_F_raw(benchmark::State& state);
@@ -228,11 +239,14 @@ protected:
     std::vector<size_t> _rand_e;
 
 
-    void build_mesh(const std::string& file_path, Mesh_Type Type, size_t Size);
+
+    void load_meshlist();
+
+    void build_mesh(Mesh_Type Type, size_t Size);
 
 
     
-    virtual std::vector<size_t> load_mesh_storage(const std::string& file_path, int load_full = 0) = 0;
+    virtual void load_mesh_storage(const std::string& file_path, int load_full = 0) = 0;
     virtual void load_mesh_from_storage(int load_full) = 0;
     virtual void destroy_mesh() {}
     

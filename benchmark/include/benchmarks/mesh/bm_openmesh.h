@@ -28,7 +28,16 @@ protected:
     Mesh mesh_storage;
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+
+        // ply to off file converting
+        //std::vector<std::string> ply_names = {"Armadillo", "bun_zipper", "dragon_vrip", "happy_vrip", "xyzrgb_dragon", "xyzrgb_manuscript", "xyzrgb_statuette"};
+        //for(auto& pn : ply_names) {
+        //    std::cout << "MESH: " << pn << std::endl;
+        //    if(OpenMesh::IO::read_mesh(mesh, std::string(ROOT_DIR) + "/off_files/ply/" + pn + ".ply")) 
+        //        OpenMesh::IO::write_mesh(mesh, std::string(ROOT_DIR) + "/off_files/" + pn + ".off");
+        //}
+
         mesh.clear();
         mesh_storage.clear();
         OpenMesh::IO::read_mesh(mesh_storage, FileName);
@@ -42,7 +51,6 @@ protected:
         }
 
         //static_assert(sizeof(Mesh::Scalar) == 8, "OpenMesh is not using double!");
-        return {mesh_storage.n_vertices(), mesh_storage.n_faces(), mesh_storage.n_edges()};
     }
 
     void load_mesh_from_storage(int load_full) override {

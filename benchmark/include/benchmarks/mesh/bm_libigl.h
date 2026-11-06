@@ -60,7 +60,7 @@ protected:
 
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int load_full = 0) override {
         _clear_all();
 
         if(!igl::read_triangle_mesh(FileName, V_storage, F_storage)) {
@@ -73,8 +73,6 @@ protected:
         if(wants(load_full, 4)) _build_EF(F_storage, E_storage, EMAP_storage, EF_storage, EI_storage);
 
         _print_memory();
-
-        return {(size_t)V_storage.rows(), (size_t)F_storage.rows(), (size_t)E_storage.rows()};
     }
 
     void load_mesh_from_storage(int load_full) override {

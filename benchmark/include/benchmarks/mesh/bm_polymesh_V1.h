@@ -14,9 +14,8 @@ protected:
     Mesh mesh;
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int full = 0) override {
         mesh.read_file(FileName);
-        return {mesh.n_vertices(), mesh.n_faces(), mesh.n_edges()};
     }
 
     void load_mesh_from_storage(int load_full) override {}

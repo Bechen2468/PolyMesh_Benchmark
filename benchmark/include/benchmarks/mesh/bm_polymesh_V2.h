@@ -18,7 +18,7 @@ protected:
     Mesh mesh;
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int full = 0) override {
         mesh.read_file(FileName);
         size_t n_edges = mesh.n_edges();
         if(full) {
@@ -31,8 +31,6 @@ protected:
         else {
             mesh.relations().invalidate(PolyMesh::V2::CacheFlag::All);
         }
-
-        return {mesh.n_vertices(), mesh.n_faces(), n_edges};
     }
 
     void load_mesh_from_storage(int load_full) override {}

@@ -2,21 +2,44 @@
 
 
 
-void IBenchmark::build_mesh(const std::string& FileName, Mesh_Type Type, size_t Size) {
-    std::filesystem::create_directory("./off_files");
-    std::ifstream f(FileName.c_str());
+void IBenchmark::load_meshlist() {
+    const std::string path = std::string(ROOT_DIR) + "/off_files";
+    if(mesh_paths.size()) return;
+
+    std::filesystem::create_directory(path);
+    for(const auto& file : std::filesystem::directory_iterator(path)) {
+        if(file.is_regular_file() && file.path().extension() == ".off") {
+            mesh_paths.push_back(file.path().string());
+        }
+    }
+    std::sort(mesh_paths.begin(), mesh_paths.end());
+    assert(mesh_paths.size() > 0 && "No off files found.");
+
+    std::cout << std::endl << "All loaded meshs:" << std::endl;
+    for(int i = 0; i < mesh_paths.size(); ++i) {
+        std::cout << i+1 << ": " << mesh_paths[i] << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+
+
+void IBenchmark::build_mesh(Mesh_Type Type, size_t Size) {
+    const std::string path = std::string(ROOT_DIR) + "/off_files";
+    std::filesystem::create_directory(path);
+    std::ifstream f(file_path.c_str());
     if(f.good()) return;
 
 
     switch(Type) {
         case Rand_Sphere:
-        my_utils::off::build_random_sphere_off(Size, FileName);
+        my_utils::off::build_random_sphere_off(Size, file_path);
         break;
         case Quad:
-        my_utils::off::build_quad_off(Size, FileName);
+        my_utils::off::build_quad_off(Size, file_path);
         break;
         case Dual:
-        my_utils::off::build_dual_off(Size, FileName);
+        my_utils::off::build_dual_off(Size, file_path);
         break;
     }
 }
@@ -31,7 +54,6 @@ void IBenchmark::run_load(benchmark::State& state) {
         state.ResumeTiming();
 
         load_mesh_storage(file_path, state.range(1));
-        //load_mesh_from_storage(state.range(1));
 
         state.PauseTiming();
         mem.measure_post_run();
@@ -40,6 +62,26 @@ void IBenchmark::run_load(benchmark::State& state) {
         state.ResumeTiming();
     }
 }
+
+
+
+
+void IBenchmark::run_memory_usage(benchmark::State& state) {
+    for (auto _ : state) {
+        state.PauseTiming();
+        mem.measure_pre_run();
+        state.ResumeTiming();
+
+        load_mesh_storage(file_path, state.range(1));
+
+        state.PauseTiming();
+        mem.measure_post_run();
+        std::cout << "Loading finished, read memory usage now.." << std::endl;
+        getchar();
+        state.ResumeTiming();
+    }
+}
+
 
 
 void IBenchmark::run_iterate_V_raw(benchmark::State& state) {

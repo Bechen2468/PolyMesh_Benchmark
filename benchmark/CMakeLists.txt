@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(PolyMesh_Benchmark LANGUAGES CXX)
 
+
 include(FetchContent)
 
 # google benchmark
@@ -67,6 +68,8 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     $<TARGET_PROPERTY:OpenMeshCore,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 # ---------------------------------------------------------------------------
 # AUTOMATIC BUILD CONFIGURATION (DEBUG VS RELEASE)

@@ -26,7 +26,7 @@ protected:
 
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int load_full = 0) override {
         mesh.clear();
         mesh_storage.clear();
         pmp::read(mesh_storage, FileName);
@@ -35,7 +35,6 @@ protected:
         fnormals = mesh.face_property<pmp::Point>("f:normal");
         
         //static_assert(sizeof(pmp::Scalar) == 8, "PMP is not using double!");
-        return {mesh.n_vertices(), mesh.n_faces(), mesh.n_edges()};
     }
 
     void load_mesh_from_storage(int load_full) override {

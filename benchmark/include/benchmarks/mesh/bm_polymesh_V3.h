@@ -21,7 +21,7 @@ protected:
     typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> fnormals;
 
 protected:
-    std::vector<size_t> load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+    void load_mesh_storage(const std::string& FileName, int load_full = 0) override {
         mesh_storage = Mesh();
         mesh_storage.read_file(FileName);
         
@@ -33,8 +33,6 @@ protected:
 
         // setting validation check flag
         VALIDATE_MESH = load_full == 10;
-
-        return {mesh_storage.n_vertices(), mesh_storage.n_faces(), 0};
     }
 
 
