@@ -155,7 +155,7 @@ def clean_system_label(raw: str) -> str:
 
 
 def find_json_files(folder: Path):
-    return sorted(p for p in folder.glob("*.json") if p.is_file())
+    return sorted(p for p in folder.rglob("*.json") if p.is_file())
 
 
 def load_entries(json_paths):

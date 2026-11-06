@@ -338,7 +338,7 @@ def main():
         print(f"Not a directory: {folder}")
         sys.exit(1)
 
-    json_paths = sorted(p for p in folder.glob("*.json") if p.is_file())
+    json_paths = sorted(p for p in folder.rglob("*.json") if p.is_file())
     if not json_paths:
         print(f"No .json files found in {folder}")
         sys.exit(1)
