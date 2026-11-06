@@ -222,7 +222,6 @@ REGISTER_T("Vec_Eigen___/V03/Memory_Usage", Benchmark_PolyMesh_V03, Traits_VecEi
 */
 
 REGISTER("OpenMesh____/V11/Load", Benchmark_OpenMesh_V11, run_load, VALUES_ALL)
-
 REGISTER("SurfaceMesh_/V03/Load", Benchmark_Pmp_Lib__V03, run_load, VALUES_ALL)
 REGISTER("Libigl______/V25/Load", Benchmark_Libigl_V2_5, run_load, VALUES_ITER_ALL)
 REGISTER_T("D_Ragged____/V03/Load", Benchmark_PolyMesh_V03, Traits_D_Ragged, run_load, VALUES_ITER_ALL)

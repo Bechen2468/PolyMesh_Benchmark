@@ -212,7 +212,7 @@ ARM_T
 void ARM::compact(std::span<const Index> Old_To_New, bool Rebuild_Reserve) {
     _free_row_ids = {};
 
-    Vec<Data> new_data;
+    AllignedVector<Data> new_data;
     new_data.reserve(_data.size());
 
     auto copy_row = [&](Row& dst_row, const Row& src_row) {
@@ -249,13 +249,13 @@ void ARM::compact(std::span<const Index> Old_To_New, bool Rebuild_Reserve) {
     for(Index new_id : Old_To_New)
         if(new_id != INDEX_INVALID) new_row_count = std::max<Index>(new_row_count, new_id + 1);
 
-    Vec<Index> new_to_old(new_row_count, INDEX_INVALID);
+    AllignedVector<Index> new_to_old(new_row_count, INDEX_INVALID);
     for(Index old_id = 0; old_id < static_cast<Index>(Old_To_New.size()); ++old_id) {
         Index new_id = Old_To_New[old_id];
         if(new_id != INDEX_INVALID) new_to_old[new_id] = old_id;
     }
 
-    Vec<Row> new_rows(new_row_count, Row{INDEX_INVALID, 0, 0});
+    AllignedVector<Row> new_rows(new_row_count, Row{INDEX_INVALID, 0, 0});
 
     Index valid = 0;
     for(Index new_id = 0; new_id < new_row_count; ++new_id) {

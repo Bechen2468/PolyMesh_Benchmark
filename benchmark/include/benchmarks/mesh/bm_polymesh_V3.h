@@ -13,12 +13,15 @@ class Benchmark_PolyMesh_V03 : public IBenchmark {
 protected:
     //using Mesh = PolyMesh::V3::PolyMesh<PolyMesh::V3::Traits<float, std::uint32_t, std::uint8_t>>;
     using Mesh = PolyMesh::V3::PolyMesh<TraitsT>;
+    template<typename T>
+    using AVec = typename Mesh::template AllignedVector<T>;
+
     Mesh mesh;
     Mesh mesh_storage;
     bool VALIDATE_MESH = false;
 
-    typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> vnormals;
-    typename Mesh::Vec<typename Mesh::T::Vertices::Vertex> fnormals;
+    AVec<typename Mesh::T::Vertices::Vertex> vnormals;
+    AVec<typename Mesh::T::Vertices::Vertex> fnormals;
 
 protected:
     void load_mesh_storage(const std::string& FileName, int load_full = 0) override {

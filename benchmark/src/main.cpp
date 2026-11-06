@@ -2,6 +2,7 @@
 #include "benchmarks/mesh/bm_pmp.h"
 #include "benchmarks/mesh/bm_polymesh_V1.h"
 #include "benchmarks/mesh/bm_polymesh_V2.h"
+#include "benchmarks/mesh/bm_polymesh_V3.h"
 #include "benchmarks/mesh/bm_openmesh.h"
 
 

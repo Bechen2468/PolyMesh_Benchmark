@@ -127,13 +127,13 @@ bool PoolM::delete_row(IndexT Idx) {
 
 
 PoolM_T
-[[nodiscard]] PoolM::Vec<DataT>& PoolM::data() {
+[[nodiscard]] PoolM::AllignedVector<DataT>& PoolM::data() {
     return _data;
 }
 
 
 PoolM_T
-[[nodiscard]] PoolM::Vec<uint8_t>& PoolM::valid_mask() {
+[[nodiscard]] PoolM::AllignedVector<uint8_t>& PoolM::valid_mask() {
     return _valid;
 }
 

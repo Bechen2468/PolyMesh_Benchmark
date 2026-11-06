@@ -21,8 +21,8 @@ struct Pool_Matrix {
 // Type defines
 // ----------------------------------------------------------------------------
     template<typename T>
-    //using Vec = std::vector<T>;
-    using Vec = std::vector<T, Aligned_Allocator<T, 64>>;
+    //using AllignedVector = std::vector<T>;
+    using AllignedVector = std::vector<T, Aligned_Allocator<T, 64>>;
 
     using EigenRowVector      = Eigen::Matrix<DataT, 1, RowSize, Eigen::RowMajor>;
     using EigenConstRowVector = const Eigen::Matrix<DataT, 1, RowSize, Eigen::RowMajor>;
@@ -87,8 +87,8 @@ struct Pool_Matrix {
 private:
     float _reserve_Perz;
 
-    Vec<DataT> _data;
-    Vec<uint8_t> _valid;
+    AllignedVector<DataT> _data;
+    AllignedVector<uint8_t> _valid;
     IndexT _valid_count;
     std::queue<IndexT> _free;
 
@@ -121,8 +121,8 @@ public:
     bool delete_row(IndexT Idx);
 
 
-    [[nodiscard]] Vec<DataT>& data();
-    [[nodiscard]] Vec<uint8_t>& valid_mask();
+    [[nodiscard]] AllignedVector<DataT>& data();
+    [[nodiscard]] AllignedVector<uint8_t>& valid_mask();
     [[nodiscard]] std::queue<IndexT>& free_queue();
 
     

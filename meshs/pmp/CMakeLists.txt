@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.24)
 
 include(FetchContent)
 
@@ -7,23 +7,37 @@ add_compile_definitions(_USE_MATH_DEFINES)
 #set(PMP_INDEX_TYPE 64)
 
 
+#set(CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY ON)
+#set(Eigen3_DIR "Eigen3_DIR-NOTFOUND" CACHE PATH "" FORCE)
+#set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/_deps/eigen-src" CACHE PATH "" FORCE)
+#set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/_deps/eigen-src")
+
+
 set(EIGEN_BUILD_TESTING    OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_DOC        OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_PKGCONFIG  OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING          OFF CACHE BOOL "" FORCE)
 
-include(FetchContent)
 
-if(NOT DEFINED EIGEN3_INCLUDE_DIR)
-FetchContent_Declare(
-    eigen
-    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-    GIT_TAG        3.4.0
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(eigen)
+include(FetchContent)
+set(CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY ON)   # never use registry entries
+
+if(NOT TARGET Eigen3::Eigen)                       # another file already provided it
+    set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(EIGEN_BUILD_DOC     OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(Eigen3
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG        3.4.0
+        GIT_SHALLOW    TRUE
+        FIND_PACKAGE_ARGS 3.4 CONFIG)              # try an installed Eigen first, download only if none is found
+    FetchContent_MakeAvailable(Eigen3)
 endif()
-find_package(Eigen3 3.4.0 REQUIRED)
+
+
+FetchContent_GetProperties(Eigen3)
+if(eigen3_SOURCE_DIR)                              # only set if it was downloaded
+    set(EIGEN3_INCLUDE_DIR "${eigen3_SOURCE_DIR}")
+endif()
 
 
 

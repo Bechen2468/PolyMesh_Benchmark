@@ -22,8 +22,8 @@ public:
     using Data = DataT;
 
     template<typename T>
-    using Vec = std::vector<T, Aligned_Allocator<T, 64>>;
-    //using Vec = std::vector<T>;
+    using AllignedVector = std::vector<T, Aligned_Allocator<T, 64>>;
+    //using AllignedVector = std::vector<T>;
 
     static constexpr Index INDEX_INVALID = std::numeric_limits<Index>::max();
 
@@ -42,8 +42,8 @@ private:
     float _row_reserve_perz;
     Index _row_reserve_min_amount;
 
-    Vec<Data> _data;
-    Vec<Row> _rows;
+    AllignedVector<Data> _data;
+    AllignedVector<Row> _rows;
 
     [[no_unique_address]] Enablable_Queue<ReuseIdsT, IndexT> _free_row_ids;
     Index _valid_count = 0;

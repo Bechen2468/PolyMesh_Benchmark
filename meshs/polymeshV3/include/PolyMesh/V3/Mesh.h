@@ -21,13 +21,14 @@
 namespace PolyMesh::V3 {
 
 
+//template<typename TraitsT = Traits<float, std::uint32_t, std::uint8_t>>
 template<TraitsC TraitsT = Traits<float, std::uint32_t, std::uint8_t>>
 class PolyMesh {
 public:
     using T = typename TraitsT::template Rebind<PolyMesh>;  // Binding Friend access
 
     template<typename VecDataT>
-    using Vec = std::vector<VecDataT, Aligned_Allocator<VecDataT, 64>>;
+    using AllignedVector = std::vector<VecDataT, Aligned_Allocator<VecDataT, 64>>;
 
 
     // unpacking base/atomic types for convinience

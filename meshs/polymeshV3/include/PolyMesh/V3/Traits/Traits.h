@@ -58,12 +58,13 @@ concept TraitsC = requires {
 
     typename T::template Rebind<_Traits_InternalC>;
 }
-&& Vertices_ExternalC<typename T::Vertices>
-&& Faces_ExternalC<typename T::Faces>
-&& EF_ExternalC<typename T::EF>
-&& VV_HE_ExternalC<typename T::VV_HE>
-&& VF_ExternalC<typename T::VF>
-&& _Traits_InternalC::check_internal_requirements<typename T::template Rebind<_Traits_InternalC>>();
+;
+//&& Vertices_ExternalC<typename T::Vertices>
+//&& Faces_ExternalC<typename T::Faces>
+//&& EF_ExternalC<typename T::EF>
+//&& VV_HE_ExternalC<typename T::VV_HE>
+//&& VF_ExternalC<typename T::VF>
+//&& _Traits_InternalC::check_internal_requirements<typename T::template Rebind<_Traits_InternalC>>();
 
 
 

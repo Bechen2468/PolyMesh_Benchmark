@@ -26,7 +26,7 @@ public:
     using Data  = DataT;
  
     template<typename T>
-    using Vec = std::vector<T, Aligned_Allocator<T, 64>>;
+    using AllignedVector = std::vector<T, Aligned_Allocator<T, 64>>;
  
     static_assert(std::is_integral_v<IndexT> && std::is_unsigned_v<IndexT>, "Index must be an unsigned integer type");
     static_assert(std::is_trivially_copyable_v<DataT> && sizeof(DataT) >= sizeof(IndexT), "free blocks store their record id inside the free slots");
@@ -130,13 +130,13 @@ private:
     Index _row_reserve_min_amount;
  
     // Data
-    Vec<Data> _data;
-    Vec<Row>  _rows;
+    AllignedVector<Data> _data;
+    AllignedVector<Row>  _rows;
     Index     _valid_count = 0;
     Enablable_Queue<ReuseIdsT, IndexT> _free_row_ids;
  
     // Free space
-    Vec<FreeBlock>                                _fb;                // free block records
+    AllignedVector<FreeBlock>                                _fb;                // free block records
     std::vector<Index>                            _fb_unused;         // recycled record ids
     std::array<Index, sizeof(FastBlockSizeT) * 8> _small_head;        // exact-size bins 1..SMALL_BINS
     FastBlockSizeT                                _small_mask = 0;    // bit s-1 set: bin s not empty

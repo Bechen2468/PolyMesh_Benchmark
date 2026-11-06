@@ -167,7 +167,7 @@ void DCSR::compact(std::span<const Index> Old_To_New, bool Rebuild_Reserve) {
     _free_row_ids = {};
 
     // new slot -> old slot (INDEX_INVALID = empty slot)
-    Vec<Index> new_to_old;
+    AllignedVector<Index> new_to_old;
     if(Old_To_New.empty()) {
         new_to_old.resize(_rows.size());
         for(Index i = 0; i < row_capacity(); ++i) new_to_old[i] = i;
@@ -186,8 +186,8 @@ void DCSR::compact(std::span<const Index> Old_To_New, bool Rebuild_Reserve) {
         if(old != INDEX_INVALID && is_valid(old))
             total += Rebuild_Reserve ? _initial_row_reserve(_rows[old].size) : _rows[old].size;
 
-    Vec<Data> new_data(total);
-    Vec<Row>  new_rows(new_to_old.size(), Row{INDEX_INVALID, 0, 0});
+    AllignedVector<Data> new_data(total);
+    AllignedVector<Row>  new_rows(new_to_old.size(), Row{INDEX_INVALID, 0, 0});
     Index pos = 0, valid = 0;
     for(Index id = 0; id < static_cast<Index>(new_to_old.size()); ++id) {
         const Index old = new_to_old[id];
