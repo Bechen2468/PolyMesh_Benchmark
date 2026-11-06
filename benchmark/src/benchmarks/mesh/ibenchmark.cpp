@@ -15,11 +15,11 @@ void IBenchmark::load_meshlist() {
     std::sort(mesh_paths.begin(), mesh_paths.end());
     assert(mesh_paths.size() > 0 && "No off files found.");
 
-    std::cout << std::endl << "All loaded meshs:" << std::endl;
-    for(int i = 0; i < mesh_paths.size(); ++i) {
-        std::cout << i+1 << ": " << mesh_paths[i] << std::endl;
-    }
-    std::cout << std::endl;
+    //std::cout << std::endl << "All loaded meshs:" << std::endl;
+    //for(int i = 0; i < mesh_paths.size(); ++i) {
+    //    std::cout << i+1 << ": " << mesh_paths[i] << std::endl;
+    //}
+    //std::cout << std::endl;
 }
 
 

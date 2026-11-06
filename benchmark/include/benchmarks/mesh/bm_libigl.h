@@ -61,6 +61,10 @@ protected:
 
 protected:
     void load_mesh_storage(const std::string& FileName, int load_full = 0) override {
+#if defined(__GLIBC__)
+        mallopt(M_MMAP_THRESHOLD, 1 << 20);   // blocks >= 1 MB always come from / go back to the OS
+#endif
+
         _clear_all();
 
         if(!igl::read_triangle_mesh(FileName, V_storage, F_storage)) {
@@ -89,7 +93,7 @@ protected:
     }
 
 
-    void destroy_mesh() override { _clear_all(); }
+    void destroy_mesh() override { _clear_all(); malloc_trim(0); }
 
     void _iterate_V_raw() override {}
     void _iterate_F_raw() override {}

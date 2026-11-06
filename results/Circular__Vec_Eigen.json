@@ -1,0 +1,152 @@
+{
+  "context": {
+    "date": "2026-11-06T12:25:29+01:00",
+    "host_name": "05023-3",
+    "executable": "./benchmark/PolyMesh_Benchmark",
+    "num_cpus": 8,
+    "mhz_per_cpu": 3901,
+    "cpu_scaling_enabled": false,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 32768,
+        "num_sharing": 2
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 32768,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 262144,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 3,
+        "size": 6291456,
+        "num_sharing": 8
+      }
+    ],
+    "load_avg": [0.948242,0.780762,0.841309],
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:1/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:1/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.6333565387564400e+02,
+      "cpu_time": 1.6200133333333042e+02,
+      "time_unit": "us",
+      "mb_post_run": 1.3000000000000000e+01,
+      "mb_pre_run": 1.3000000000000000e+01
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:2/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 1,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:2/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 4.4029603498832630e+03,
+      "cpu_time": 4.4020079999999389e+03,
+      "time_unit": "us",
+      "mb_post_run": 3.2300000000000000e+02,
+      "mb_pre_run": 3.2300000000000000e+02
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:3/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 2,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:3/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.9385846486936014e+03,
+      "cpu_time": 1.9376593333332673e+03,
+      "time_unit": "us",
+      "mb_post_run": 1.0300000000000000e+02,
+      "mb_pre_run": 1.0300000000000000e+02
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:4/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 3,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:4/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 2.3141526714122542e+03,
+      "cpu_time": 2.3139653333335750e+03,
+      "time_unit": "us",
+      "mb_post_run": 1.1700000000000000e+02,
+      "mb_pre_run": 1.1700000000000000e+02
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:5/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 4,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:5/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 1.5461633990829190e+04,
+      "cpu_time": 1.5460855333333966e+04,
+      "time_unit": "us",
+      "mb_post_run": 1.0650000000000000e+03,
+      "mb_pre_run": 1.0650000000000000e+03
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:6/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 5,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:6/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 9.1848966743176188e+03,
+      "cpu_time": 9.1840730000007188e+03,
+      "time_unit": "us",
+      "mb_post_run": 5.1800000000000000e+02,
+      "mb_pre_run": 5.1800000000000000e+02
+    },
+    {
+      "name": "Vec_Eigen___/V03/Circular/|V|:7/Full_Load:1/iterations:3",
+      "family_index": 0,
+      "per_family_instance_index": 6,
+      "run_name": "Vec_Eigen___/V03/Circular/|V|:7/Full_Load:1/iterations:3",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 3,
+      "real_time": 2.1294033339169499e+04,
+      "cpu_time": 2.1293209666666258e+04,
+      "time_unit": "us",
+      "mb_post_run": 1.2800000000000000e+03,
+      "mb_pre_run": 1.2800000000000000e+03
+    }
+  ]
+}
