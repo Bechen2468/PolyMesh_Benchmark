@@ -144,6 +144,8 @@ void Benchmark_Libigl_V2_5::_collapse() {
         igl::edge_flaps(F, cE, cEMAP, cEF, cEI);
         const int nFs = (int)F.rows();
 
+        const std::vector<bool> border = igl::is_border_vertex(F);
+
         Eigen::RowVectorXd p(3);   // allocated once instead of once per collapse
         int e1, e2, f1, f2;
 
@@ -152,14 +154,18 @@ void Benchmark_Libigl_V2_5::_collapse() {
 
             const int v = nV + f;
 
-            int e = -1;
+            // pick an edge from the new vertex v to a neighbour that is NOT on the border
+            int e = -1, other = -1;
             for (int c = 0; c < 3; ++c) {
                 const int ec = cEMAP(f + c * nFs);
-                if (cE(ec, 0) == v || cE(ec, 1) == v) { e = ec; break; }
+                if (cE(ec, 0) != v && cE(ec, 1) != v) continue;      // edge does not touch v
+                const int o = (cE(ec, 0) == v) ? cE(ec, 1) : cE(ec, 0);
+                if (border[o]) continue;                            // unsafe for collapse_edge
+                if (cEF(ec, 0) < 0 || cEF(ec, 1) < 0) continue;     // edge itself is open
+                e = ec; other = o;
+                break;
             }
             if (e < 0) continue;
-
-            const int other = (cE(e, 0) == v) ? cE(e, 1) : cE(e, 0);
             p = Vd.row(other);   // merge into the neighbour, keep its position
 
             igl::collapse_edge(e, p, Vd, F, cE, cEMAP, cEF, cEI, e1, e2, f1, f2);
@@ -199,7 +205,7 @@ void Benchmark_Libigl_V2_5::_collapse() {
         _free(NF);              // old, uncompacted F
 
         V = NVd.cast<Scalar>();
-    }   // NVd freed here
+    }
 
     _relations_changed();
 }
