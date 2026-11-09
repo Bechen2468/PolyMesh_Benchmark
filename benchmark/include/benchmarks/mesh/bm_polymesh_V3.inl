@@ -581,46 +581,76 @@ void Benchmark_PolyMesh_V03<TraitsT>::_subdivision() {
 template<PolyMesh::V3::TraitsC TraitsT>
 void Benchmark_PolyMesh_V03<TraitsT>::_collapse() {
     using Index = typename Mesh::Index;
-
+ 
     mesh.set_update_VF(true);
-        //TODO: TEST SETTINGS
-
+ 
     auto& faces = mesh.faces();
-
+ 
     std::vector<Index> orig_face_ids;
     orig_face_ids.reserve(mesh.n_faces());
     for(auto f : faces) orig_face_ids.push_back(f.idx());
-
-    std::vector<std::pair<Index, Index>> to_collapse;
-    to_collapse.reserve(orig_face_ids.size());
-
+ 
+#ifdef PM_VERIFY_COLLAPSE
+    const auto n_v_before = mesh.n_vertices();
+    const auto n_f_before = mesh.n_faces();
+    std::vector<std::vector<Index>> orig_rows;
+    orig_rows.reserve(orig_face_ids.size());
     for(Index fid : orig_face_ids) {
         auto row = faces[fid];
-        Index n = row.size();
-
-        typename Mesh::T::Vertex centroid = {0, 0, 0};
-        for(Index vid : row) {
-            auto p = mesh.vertices()[vid];
-            centroid[0] += p[0];
-            centroid[1] += p[1];
-            centroid[2] += p[2];
-        }
-        centroid[0] /= n;
-        centroid[1] /= n;
-        centroid[2] /= n;
-
-        Index neighbor = row[0];
-        Index new_v = mesh.split(fid, centroid);
-        to_collapse.emplace_back(new_v, neighbor);
+        orig_rows.emplace_back(row.begin(), row.end());
     }
-
+#endif
+ 
+    std::vector<std::pair<Index, Index>> to_collapse;
+    to_collapse.reserve(orig_face_ids.size());
+ 
+    // split faces
+    const typename Mesh::T::Vertex p = {0, 0, 0};
+    for(Index fid : orig_face_ids) {
+        const Index target = faces[fid][2];    // read before the split changes the row
+        const Index new_v  = mesh.split(fid, p);
+        to_collapse.emplace_back(new_v, target);
+    }
+ 
+    // collapse new vertices
     for(auto [from, to] : to_collapse) {
         mesh.collapse(to, from);
     }
-
+ 
+    // remove deleted items
     mesh.compact(false, false);
-    std::cout << "|V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+ 
+#ifdef PM_VERIFY_COLLAPSE
+    bool ok = (mesh.n_vertices() == n_v_before) && (mesh.n_faces() == n_f_before);
+    for(size_t i = 0; ok && i < orig_face_ids.size(); ++i) {
+        auto row = faces[orig_face_ids[i]];
+        const auto& orig = orig_rows[i];
+        const size_t n = orig.size();
+        
+        if(row.size() != n) { 
+            ok = false; break; 
+        }
+ 
+        // same face, start vertex may be rotated
+        size_t shift = 0;
+        while(shift < n && row[shift] != orig[0]) ++shift;
+
+        if(shift == n) { 
+            ok = false; break; 
+        }
+
+        for(size_t k = 0; k < n; ++k) {
+            if(row[(shift + k) % n] != orig[k]) { 
+                ok = false; 
+                break; 
+            }
+        }
+    }
+    std::cout << "collapse result " << (ok ? "OK" : "WRONG")
+              << "  |V|: " << mesh.n_vertices() << "  |F|: " << mesh.n_faces() << std::endl;
+#endif
 }
+
 
 
 

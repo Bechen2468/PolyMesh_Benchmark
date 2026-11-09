@@ -113,7 +113,8 @@ public:
 
     Index split(Index F, std::span<const Scalar, 3> P);
 
-    void collapse(Index To_Vertex, Index From_Vertex);
+    bool is_collapse_ok(Index To_Vertex, Index From_Vertex);
+    bool collapse(Index To_Vertex, Index From_Vertex);
 
 // ----------------------------------------------------------------------------  
 // Helper Matrices
