@@ -102,6 +102,9 @@ public:
     void reserve(IndexT TotalSize);
 
 
+    [[nodiscard]] DataT* append_rows(IndexT N);
+
+
     [[nodiscard]] IndexT size() const;
     
     [[nodiscard]] IndexT valid_amount() const;

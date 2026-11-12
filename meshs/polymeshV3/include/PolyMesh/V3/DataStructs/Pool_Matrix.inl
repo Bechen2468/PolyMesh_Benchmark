@@ -26,6 +26,20 @@ void PoolM::reserve(IndexT TotalSize) {
     _valid.reserve(TotalSize);
 }
 
+
+PoolM_T
+DataT* PoolM::append_rows(IndexT N) {
+    const size_t old = _data.size();
+    const size_t want = old + size_t(N) * RowSize;
+    if (_data.capacity() < want)
+        reserve(static_cast<IndexT>((want / RowSize) * (1.0 + _reserve_Perz)));
+    _data.resize(want);
+    _valid.resize(_valid.size() + N, 1);
+    _valid_count += N;
+    return _data.data() + old;
+}
+
+
 PoolM_T
 [[nodiscard]] IndexT PoolM::size() const {
     return _data.size() / RowSize;

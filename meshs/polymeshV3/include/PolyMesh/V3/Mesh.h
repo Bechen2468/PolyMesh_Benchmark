@@ -14,6 +14,7 @@
 #include "PolyMesh/V3/Traits/Traits.h"
 #include "PolyMesh/V3/DataStructs/ValidMask.h"
 #include "PolyMesh/V3/Relation_Matrices/Cache.h"
+#include "PolyMesh/V3/off_file_helper.h"
 // ----------------------------------------------------------------------------
 
 

@@ -23,7 +23,7 @@
 #define RANGE_START        1
 #define RANGE_END          5
 #define RANGE_MULTIPLIER   1
-#define ITERATIONS         2
+#define ITERATIONS         3
 
 
 #define REGISTER(DISPLAY_NAME, FIXTURE, FUNC, FULL_LOAD_VALUES)             \

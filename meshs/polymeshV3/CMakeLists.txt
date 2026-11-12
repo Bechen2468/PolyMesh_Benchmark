@@ -22,6 +22,22 @@ if(NOT TARGET Eigen3::Eigen)                       # another file already provid
 endif()
 
 
+if(NOT TARGET FastFloat::fast_float AND NOT TARGET fast_float)
+    FetchContent_Declare(FastFloat
+        GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
+        GIT_TAG        v8.3.3
+        GIT_SHALLOW    TRUE
+        FIND_PACKAGE_ARGS CONFIG)                  # try an installed copy first, download only if none is found
+    FetchContent_MakeAvailable(FastFloat)
+endif()
+
+if(TARGET FastFloat::fast_float)
+    set(POLYMESH_FASTFLOAT_TARGET FastFloat::fast_float)
+else()
+    set(POLYMESH_FASTFLOAT_TARGET fast_float)
+endif()
+
+
 #file(GLOB_RECURSE my_sources
 #    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 #)
@@ -38,5 +54,5 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(${PROJECT_NAME} INTERFACE Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} INTERFACE Eigen3::Eigen ${POLYMESH_FASTFLOAT_TARGET})
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)

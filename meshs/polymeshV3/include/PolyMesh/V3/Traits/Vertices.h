@@ -3,6 +3,7 @@
 // ----------------------------------------------------------------------------
 #include <Eigen/Dense>
 #include "PolyMesh/V3/DataStructs/Pool_Matrix.h"
+#include "PolyMesh/V3/off_file_helper.h"
 // ----------------------------------------------------------------------------
 
 
@@ -165,14 +166,12 @@ private:
     void reserve(Index total_vertices) { _data.reserve(total_vertices); }
 
 
-    void load_off(std::ifstream& file, Index v_count) {
-        reserve(v_count);
 
-        for (Index i = 0; i < v_count; ++i) {
-            std::array<Scalar, 3> v;
-            file >> v[0] >> v[1] >> v[2];
-            _data.insert(std::span<const Scalar, 3>(v));
-        }
+    bool load_off(std::string_view& in, Index v_count) {
+        Scalar* dst = _data.append_rows(v_count);
+        for (size_t i = 0, n = size_t(v_count) * 3; i < n; ++i)
+            if (!off_file_helper::parse_next(in, dst[i])) return false;
+        return true;
     }
 };
 };

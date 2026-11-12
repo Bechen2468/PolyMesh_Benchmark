@@ -229,7 +229,7 @@ REGISTER_T("VecVec______/V03/Load", Benchmark_PolyMesh_V03, Traits_VecVec, run_l
 REGISTER_T("Apd_Ragged__/V03/Load", Benchmark_PolyMesh_V03, Traits_Append, run_load, VALUES_ITER_ALL)
 REGISTER_T("Vec_Eigen___/V03/Load", Benchmark_PolyMesh_V03, Traits_VecEigen, run_load, VALUES_ITER_ALL)
 
-
+/*
 REGISTER("OpenMesh____/V11/Circular", Benchmark_OpenMesh_V11, run_circular, VALUES_ALL)
 REGISTER("SurfaceMesh_/V03/Circular", Benchmark_Pmp_Lib__V03, run_circular, VALUES_ALL)
 REGISTER("Libigl______/V25/Circular", Benchmark_Libigl_V2_5, run_circular, VALUES_ALL)
@@ -294,3 +294,4 @@ REGISTER_T("VecVec______/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_VecV
 REGISTER_T("Apd_Ragged__/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_Append, run_render_export, VALUES_ALL)
 REGISTER_T("Vec_Eigen___/V03/Render_Export", Benchmark_PolyMesh_V03, Traits_VecEigen, run_render_export, VALUES_ALL)
 
+*/

@@ -2,6 +2,7 @@
 #define POLYMESH_V3_TRAITS_FACES_RAGGED_MATRIX_H
 // ----------------------------------------------------------------------------
 #include <Eigen/Dense>
+#include "PolyMesh/V3/off_file_helper.h"
 #include "PolyMesh/V3/DataStructs/D_Ragged_Matrix.h"
 #include "PolyMesh/V3/DataStructs/Append_Ragged_Matrix.h"
 #include "PolyMesh/V3/DataStructs/VecVec_Matrix.h"
@@ -123,15 +124,18 @@ private:
     void reserve(Index Data_Size) { _data.reserve(Data_Size); }
     void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
  
-    void load_off(std::ifstream& file, Index f_count) {
+    bool load_off(std::string_view& in, Index f_count) {
         reserve(f_count * 3);
         std::vector<Index> face_buf;
         for (Index fi = 0; fi < f_count; ++fi) {
-            Index n; file >> n;
+            Index n;
+            if (!off_file_helper::parse_next(in, n)) return false;
             face_buf.resize(n);
-            for (Index j = 0; j < n; ++j) file >> face_buf[j];
+            for (Index j = 0; j < n; ++j)
+                if (!off_file_helper::parse_next(in, face_buf[j])) return false;
             add(face_buf);
         }
+        return true;
     }
 };
 
@@ -215,20 +219,22 @@ private:
 
     void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
 
-    void load_off(std::ifstream& file, Index f_count) {
-    reserve(f_count * 3);
+    bool load_off(std::string_view& in, Index f_count) {
+        reserve(f_count * 3);
 
-    std::vector<Index> face_buf;
-    for (Index fi = 0; fi < f_count; ++fi) {
-        Index n;
-        file >> n;
+        std::vector<Index> face_buf;
+        for (Index fi = 0; fi < f_count; ++fi) {
+            Index n;
+            if (!off_file_helper::parse_next(in, n)) return false;
 
-        face_buf.resize(n);
-        for (Index j = 0; j < n; ++j) file >> face_buf[j];
+            face_buf.resize(n);
+            for (Index j = 0; j < n; ++j)
+                if (!off_file_helper::parse_next(in, face_buf[j])) return false;
 
-        add(face_buf);
+            add(face_buf);
+        }
+        return true;
     }
-}
 };
 
 
@@ -289,15 +295,18 @@ private:
     void reserve(Index Data_Size) { _data.reserve(Data_Size); }
     void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
 
-    void load_off(std::ifstream& file, Index f_count) {
+    bool load_off(std::string_view& in, Index f_count) {
         reserve(f_count * 3);
         std::vector<Index> face_buf;
         for (Index fi = 0; fi < f_count; ++fi) {
-            Index n; file >> n;
+            Index n;
+            if (!off_file_helper::parse_next(in, n)) return false;
             face_buf.resize(n);
-            for (Index j = 0; j < n; ++j) file >> face_buf[j];
+            for (Index j = 0; j < n; ++j)
+                if (!off_file_helper::parse_next(in, face_buf[j])) return false;
             add(face_buf);
         }
+        return true;
     }
 };
 
@@ -360,15 +369,18 @@ private:
     void reserve(Index Data_Size) { _data.reserve(Data_Size); }
     void compact(std::span<const Index> new_order, bool rebuild_reserve) { _data.compact(new_order, rebuild_reserve); }
 
-    void load_off(std::ifstream& file, Index f_count) {
+    bool load_off(std::string_view& in, Index f_count) {
         reserve(f_count * 3);
         std::vector<Index> face_buf;
         for (Index fi = 0; fi < f_count; ++fi) {
-            Index n; file >> n;
+            Index n;
+            if (!off_file_helper::parse_next(in, n)) return false;
             face_buf.resize(n);
-            for (Index j = 0; j < n; ++j) file >> face_buf[j];
+            for (Index j = 0; j < n; ++j)
+                if (!off_file_helper::parse_next(in, face_buf[j])) return false;
             add(face_buf);
         }
+        return true;
     }
 };
 

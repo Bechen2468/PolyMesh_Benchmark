@@ -28,25 +28,35 @@ PM::~PolyMesh() {
 
 PM_T
 void PM::read_file(const std::string& File_Path) {
-    std::ifstream file(File_Path);
+    std::ifstream file(File_Path, std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "ERROR: Failed to open \"" << File_Path << "\"\n";
         return;
     }
+    std::string buf{std::istreambuf_iterator<char>(file), {}};
+    std::string_view in = buf;
 
-    std::string line;
-    std::getline(file, line);
-    if(line.rfind("OFF", 0) != std::string::npos)
-        std::getline(file, line);
+    off_file_helper::skip_ws(in);
+    if (in.substr(0, 3) == "OFF") in.remove_prefix(3);
 
     Index v_count, f_count, e_count;
-    std::istringstream(line) >> v_count >> f_count >> e_count;
+    if (!off_file_helper::parse_next(in, v_count) ||
+        !off_file_helper::parse_next(in, f_count) ||
+        !off_file_helper::parse_next(in, e_count)) {
+        std::cerr << "ERROR: Bad OFF header\n";
+        return;
+    }
 
-    // Allocate vertices
-    _v.load_off(file, v_count);
+    if (!_v.load_off(in, v_count)) {
+        std::cerr << "ERROR: Bad vertex data\n";
+        return;
+    }
 
     // Allocate faces
-    _f.load_off(file, f_count);
+    if (!_f.load_off(in, f_count)) {
+        std::cerr << "ERROR: Bad face data\n";
+        return;
+    }
 }
 
 

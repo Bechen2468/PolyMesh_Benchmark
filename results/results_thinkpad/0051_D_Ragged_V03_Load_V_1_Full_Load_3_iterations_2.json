@@ -1,10 +1,10 @@
 {
   "context": {
-    "date": "2026-11-12T06:28:52+01:00",
+    "date": "2026-11-12T13:16:22+01:00",
     "host_name": "05023-3",
     "executable": "./benchmark/PolyMesh_Benchmark",
     "num_cpus": 8,
-    "mhz_per_cpu": 3900,
+    "mhz_per_cpu": 3901,
     "cpu_scaling_enabled": false,
     "caches": [
       {
@@ -32,7 +32,7 @@
         "num_sharing": 8
       }
     ],
-    "load_avg": [0.961426,0.875,0.928711],
+    "load_avg": [1.01221,0.931152,0.673828],
     "library_build_type": "release"
   },
   "benchmarks": [
@@ -46,10 +46,10 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 2,
-      "real_time": 4.7493027999735205e+04,
-      "cpu_time": 4.7453468000000008e+04,
+      "real_time": 2.2859554001115612e+04,
+      "cpu_time": 2.2855735500000006e+04,
       "time_unit": "us",
-      "mb_post_run": 4.0000000000000000e+00,
+      "mb_post_run": 7.0000000000000000e+00,
       "mb_pre_run": 2.0000000000000000e+00
     }
   ]
