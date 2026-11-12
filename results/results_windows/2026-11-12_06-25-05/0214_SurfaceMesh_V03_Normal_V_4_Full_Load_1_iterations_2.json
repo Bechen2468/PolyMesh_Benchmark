@@ -1,5 +1,10 @@
 {
   "context": {
+    "date": "2026-11-12T06:38:47+01:00",
+    "host_name": "DESKTOP-RM9NHCP",
+    "executable": "C:\\Users\\leon4\\Documents\\Repositorys\\Bechen2468\\PolyMesh_Benchmark\\build_Release\\benchmark\\Release\\PolyMesh_Benchmark.exe",
+    "num_cpus": 16,
+    "mhz_per_cpu": 3394,
     "caches": [
       {
         "type": "Data",
@@ -40,6 +45,8 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 2,
+      "real_time": 4.2175050000423653e+04,
+      "cpu_time": 3.9062500000000000e+04,
       "time_unit": "us",
       "mb_post_run": 8.3000000000000000e+01,
       "mb_pre_run": 8.3000000000000000e+01
