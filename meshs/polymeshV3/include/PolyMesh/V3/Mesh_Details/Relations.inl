@@ -327,7 +327,7 @@ void PM::_VV_HE_build() {
     }
 
     // Building VV_HE
-     = typename T::VV_HE(row_sizes, T::Reserve_Perz);
+    _relations.VV_HE = typename T::VV_HE(row_sizes, T::Reserve_Perz);
 
     for(auto f : _f) {
         _VV_HE_add_face(f, f.idx());
