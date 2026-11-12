@@ -327,13 +327,13 @@ void PM::_VV_HE_build() {
     }
 
     // Building VV_HE
-    _relations.VV_HE = typename T::VV_HE(row_sizes, T::Reserve_Perz);
+     = typename T::VV_HE(row_sizes, T::Reserve_Perz);
 
     for(auto f : _f) {
         _VV_HE_add_face(f, f.idx());
     }
 
-    vv_he.compact({}, _COMPACT_ADD_RESERVE);
+    _relations.VV_HE.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
@@ -448,7 +448,7 @@ void PM::_VF_build() {
         _VF_add_face(f, f.idx());
     }
 
-    vf.compact({}, _COMPACT_ADD_RESERVE);
+    _relations.VF.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
