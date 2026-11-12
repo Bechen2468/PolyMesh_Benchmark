@@ -1,19 +1,11 @@
 {
   "context": {
-<<<<<<<< HEAD:results_thinkpad/2026-11-12_06-25-46/0246_SurfaceMesh_V03_Smoothing_V_1_Full_Load_1_iterations_2.json
     "date": "2026-11-12T06:35:21+01:00",
     "host_name": "05023-3",
     "executable": "./benchmark/PolyMesh_Benchmark",
     "num_cpus": 8,
     "mhz_per_cpu": 4009,
     "cpu_scaling_enabled": false,
-========
-    "date": "2026-11-12T06:40:14+01:00",
-    "host_name": "DESKTOP-RM9NHCP",
-    "executable": "C:\\Users\\leon4\\Documents\\Repositorys\\Bechen2468\\PolyMesh_Benchmark\\build_Release\\benchmark\\Release\\PolyMesh_Benchmark.exe",
-    "num_cpus": 16,
-    "mhz_per_cpu": 3394,
->>>>>>>> 088bd0d1d29748fc3445df526245b85a50f05235:results/results_windows/2026-11-12_06-25-05/0246_SurfaceMesh_V03_Smoothing_V_1_Full_Load_1_iterations_2.json
     "caches": [
       {
         "type": "Data",
@@ -54,13 +46,8 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 2,
-<<<<<<<< HEAD:results_thinkpad/2026-11-12_06-25-46/0246_SurfaceMesh_V03_Smoothing_V_1_Full_Load_1_iterations_2.json
       "real_time": 1.5178215003288642e+03,
       "cpu_time": 1.5168304999999966e+03,
-========
-      "real_time": 3.0793000005360227e+03,
-      "cpu_time": 0.0000000000000000e+00,
->>>>>>>> 088bd0d1d29748fc3445df526245b85a50f05235:results/results_windows/2026-11-12_06-25-05/0246_SurfaceMesh_V03_Smoothing_V_1_Full_Load_1_iterations_2.json
       "time_unit": "us",
       "mb_post_run": 5.0000000000000000e+00,
       "mb_pre_run": 5.0000000000000000e+00
