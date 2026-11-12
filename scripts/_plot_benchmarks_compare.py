@@ -22,8 +22,8 @@ SYSTEM_LABELS = {
     "OpenMesh____": "OpenMesh",
     "SurfaceMesh_": "SurfaceMesh",
     "Libigl______": "Libigl",
-    "D_Ragged____": "PM-Reuse-Ragged",
-    "Apd_Ragged__": "PM-Append-Ragged",
+    "D_Ragged____": "PM-Reuse",
+    "Apd_Ragged__": "PM-Append",
     "VecVec______": "PM-VecVec",
     "Vec_Eigen___": "PM-VecEigen",
     "Apd_Ragged_V": "PM-Validate",
@@ -55,14 +55,50 @@ SYSTEM_COLORS = {
     "OpenMesh":         "#595959",   # neutral baseline
     "SurfaceMesh":      "#2a78d6",   # blue
     "Libigl":           "#eb6834",   # orange
-    "PM-Reuse-Ragged":  "#1baf7a",   # aqua
-    "PM-Append-Ragged": "#eda100",   # yellow
+    "PM-Reuse":         "#1baf7a",   # aqua
+    "PM-Append":        "#eda100",   # yellow
     "PM-VecVec":        "#e87ba4",   # magenta
     "PM-VecEigen":      "#008300",   # green
     "PM-Validate":      "#6250d6",   # violet
 }
 
 DEFAULT_COLOR_CYCLE = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+# ----------------------------------------------------------------------
+# Machines (test systems)
+# ----------------------------------------------------------------------
+# Folders are passed on the command line, one per machine:
+#   python plot_benchmarks.py results_thinkpad results/results_windows results/results_apple
+# or with explicit names:
+#   python plot_benchmarks.py ThinkPad=results_thinkpad Windows=results/results_windows ...
+# Without a name, the folder name is used with this prefix stripped.
+MACHINE_PREFIX_STRIP = "results_"
+
+# True: label machines "System 1", "System 2", ... in command-line order
+# (the mapping folder -> number is printed when the script runs).
+# False: use the names below / Name=path.
+USE_SYSTEM_NUMBERS = True
+
+# Optional nicer display names for machines (key = derived/explicit name).
+MACHINE_LABELS = {
+    "thinkpad": "ThinkPad",
+    "windows": "Windows",
+    "apple": "Apple",
+}
+
+# Bar style per machine, in command-line order. Same library color,
+# different fill pattern. hatch=None -> solid bar.
+MACHINE_STYLES = [
+    {"hatch": None},
+    {"hatch": "////"},
+    {"hatch": "..."},
+    {"hatch": "xx"},
+    {"hatch": "\\\\\\\\"},
+]
+
+# Color of the hatch lines/dots drawn on top of the library color.
+HATCH_COLOR = "white"
+plt.rcParams["hatch.linewidth"] = 0.8
 
 # For every operation EXCEPT "Load", only this Full_Load value is plotted.
 REPRESENTATIVE_FULL_LOAD = [1, 10]
@@ -79,7 +115,12 @@ GROUP_WIDTH = 0.70
 MAX_Y_TICKS = 5
 
 # How much vertical room to leave above the largest bar.
-Y_TOP_MARGIN = 1.30
+# Larger than before because the value labels are now vertical.
+Y_TOP_MARGIN = 2.2
+
+# Value labels above bars: rotation (90 = vertical) and font size.
+VALUE_LABEL_ROTATION = 90
+VALUE_LABEL_FONTSIZE = 6
 
 # How much room to leave below the smallest bar.
 Y_BOTTOM_MARGIN = 1.25
@@ -88,14 +129,19 @@ Y_BOTTOM_MARGIN = 1.25
 
 # Figure sizing
 LOAD_FIG_HEIGHT = 3.1
-LOAD_GROUP_WIDTH = 0.84
-LOAD_WIDTH_PER_GROUP = 1.2
+LOAD_GROUP_WIDTH = 0.88
+# Width per Full_Load group; multiplied by the number of machines / 3.
+LOAD_WIDTH_PER_GROUP = 2.0
+
+# Fraction of each system's slot filled by its (touching) machine bars.
+# The rest is the gap between systems.
+SYSTEM_FILL = 0.88
 
 OPERATION_FIG_HEIGHT = 2.8
 
-# Width per system for non-Load plots.
+# Width per system for non-Load plots (for 3 machines; scales with count).
 # Smaller = narrower graphs.
-OPERATION_WIDTH_PER_SYSTEM = 0.45
+OPERATION_WIDTH_PER_SYSTEM = 0.7
 
 # Minimum total width of a non-Load plot.
 OPERATION_MIN_FIG_WIDTH = 2.4
@@ -158,7 +204,7 @@ def find_json_files(folder: Path):
     return sorted(p for p in folder.rglob("*.json") if p.is_file())
 
 
-def load_entries(json_paths):
+def load_entries(json_paths, machine):
     """Return one {system, operation, full_load, times_by_v} entry per
     benchmark name with the |V| segment removed.
 
@@ -215,6 +261,7 @@ def load_entries(json_paths):
     entries = []
     for key, by_v in times.items():
         entry = dict(meta[key])
+        entry["machine"] = machine
         entry["times_by_v"] = {
             v: float(np.mean(vals)) for v, vals in by_v.items()
         }
@@ -242,13 +289,14 @@ def compute_speedup(entry, baseline_entry):
     missing = set(a) ^ set(b)
     if missing:
         warn_key = (
-            entry["system"], entry["operation"], entry["full_load"],
-            baseline_entry["full_load"],
+            entry.get("machine"), entry["system"], entry["operation"],
+            entry["full_load"], baseline_entry["full_load"],
         )
         if warn_key not in _warned_missing_v:
             _warned_missing_v.add(warn_key)
             print(
-                f"  [warn] {entry['system']} / {entry['operation']} "
+                f"  [warn] [{entry.get('machine')}] "
+                f"{entry['system']} / {entry['operation']} "
                 f"(Full_Load {entry['full_load']}): |V| values "
                 f"{sorted(missing)} not present for both it and the "
                 f"baseline -- ignored"
@@ -311,8 +359,8 @@ def system_color(system, idx):
     )
 
 
-def get_baseline_entry(entries, full_load):
-    """Baseline entry for the given Full_Load value.
+def get_baseline_entry(entries, full_load, machine=None):
+    """Baseline entry for the given Full_Load value (on the given machine).
 
     Falls back to whichever single value the baseline system actually has.
     """
@@ -320,6 +368,7 @@ def get_baseline_entry(entries, full_load):
     candidates = [
         e for e in entries
         if e["system"] == BASELINE_SYSTEM
+        and (machine is None or e.get("machine") == machine)
     ]
 
     exact = [
@@ -426,12 +475,81 @@ def add_value_labels(ax, bars):
                 bar.get_x() + bar.get_width() / 2,
                 height,
             ),
-            xytext=(0, 3),
+            xytext=(0, 2),
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=7,
+            rotation=VALUE_LABEL_ROTATION,
+            fontsize=VALUE_LABEL_FONTSIZE,
         )
+
+
+def machine_style(j):
+    return MACHINE_STYLES[j % len(MACHINE_STYLES)]
+
+
+def draw_machine_bars(ax, xs, heights, width, colors, j, label=None):
+    """Bars for machine j: library color fill + that machine's pattern."""
+
+    hatch = machine_style(j)["hatch"]
+    return ax.bar(
+        xs,
+        heights,
+        width=width,
+        color=colors,
+        hatch=hatch,
+        edgecolor=HATCH_COLOR if hatch else "none",
+        linewidth=0,
+        label=label,
+    )
+
+
+def machine_legend_handles(machines):
+    """Gray patches showing each machine's pattern (color-independent)."""
+    from matplotlib.patches import Patch
+
+    return [
+        Patch(
+            facecolor="#7a7a7a",
+            hatch=machine_style(j)["hatch"],
+            edgecolor=HATCH_COLOR if machine_style(j)["hatch"] else "none",
+            linewidth=0,
+            label=m,
+        )
+        for j, m in enumerate(machines)
+    ]
+
+
+def machine_bar_offsets(n_machines, slot_width):
+    """Offsets (relative to the slot center) and width of touching bars."""
+
+    w = slot_width * SYSTEM_FILL / n_machines
+    offsets = [(j - (n_machines - 1) / 2) * w for j in range(n_machines)]
+    return offsets, w
+
+
+def layout_slots(systems, n_machines, total_width):
+    """Slot centers (relative to the group center, summing to total_width),
+    the normal slot width and the single-bar width.
+
+    The baseline system gets a narrow slot holding a single bar; every
+    other system gets a full slot with n_machines touching bars.
+    """
+
+    gap_frac = 1 - SYSTEM_FILL
+    bar_frac = SYSTEM_FILL / n_machines
+    units = [
+        (bar_frac + gap_frac) if s == BASELINE_SYSTEM else 1.0
+        for s in systems
+    ]
+    slot = total_width / sum(units)
+    widths = [u * slot for u in units]
+
+    centers, pos = [], -total_width / 2
+    for w in widths:
+        centers.append(pos + w / 2)
+        pos += w
+    return np.array(centers), slot, slot * bar_frac
 
 
 def save_all_formats(fig, out_dir, filename_stem):
@@ -486,9 +604,12 @@ def file_suffix(v):
 # Operation plots
 # ----------------------------------------------------------------------
 
-def plot_operation(operation, entries, out_dir, v=None):
+def plot_operation(operation, entries, out_dir, machines, v=None):
     """v=None: averaged over all |V| (file <operation>.pdf).
-    v=<value>: only that |V| (file <operation>_<value>.pdf)."""
+    v=<value>: only that |V| (file <operation>_<value>.pdf).
+
+    One slot per system; inside it one touching bar per machine, each
+    relative to the baseline on that same machine."""
 
     if v is not None:
         entries = entries_for_v(entries, v)
@@ -501,12 +622,7 @@ def plot_operation(operation, entries, out_dir, v=None):
         if e["full_load"] in REPRESENTATIVE_FULL_LOAD
     ]
 
-    baseline_entry = get_baseline_entry(
-        subset,
-        REPRESENTATIVE_FULL_LOAD[0],
-    )
-
-    if baseline_entry is None:
+    if not any(e["system"] == BASELINE_SYSTEM for e in subset):
         print(f"  [skip] {label}: no baseline entry found")
         return
 
@@ -527,65 +643,73 @@ def plot_operation(operation, entries, out_dir, v=None):
         )
         return
 
-    speedups = [1.0]
+    n_machines = len(machines)
 
-    for system in other_systems:
-        matches = [
-            e
-            for e in subset
-            if e["system"] == system
-        ]
-
-        if matches:
-            speedups.append(
+    # speedups[j][i] = machine j, system i
+    speedups = []
+    for machine in machines:
+        m_subset = [e for e in subset if e.get("machine") == machine]
+        baseline_entry = get_baseline_entry(
+            m_subset,
+            REPRESENTATIVE_FULL_LOAD[0],
+        )
+        row = []
+        for system in systems:
+            if baseline_entry is None:
+                row.append(np.nan)
+                continue
+            if system == BASELINE_SYSTEM:
+                row.append(1.0)
+                continue
+            matches = [e for e in m_subset if e["system"] == system]
+            row.append(
                 compute_speedup(matches[0], baseline_entry)
+                if matches else np.nan
             )
-        else:
-            speedups.append(np.nan)
+        speedups.append(row)
 
-    # --------------------------------------------------------------
-    # Figure sizing
-    #
-    # Do NOT make the width proportional to the number of bars.
-    # One bar = one category here, so a small fixed amount per system
-    # is enough.
-    # --------------------------------------------------------------
+    # Width in "slot" units: full slots for libraries, a narrow one for
+    # the baseline.
+    total_width = (len(systems) - 1) + (1 - SYSTEM_FILL) + SYSTEM_FILL / n_machines
 
     fig_width = max(
         OPERATION_MIN_FIG_WIDTH,
-        OPERATION_WIDTH_PER_SYSTEM * len(systems)
+        OPERATION_WIDTH_PER_SYSTEM * (n_machines / 3) * total_width
         + OPERATION_EXTRA_WIDTH,
     )
 
     # DEBUG
-    print("   plot", label, systems, [round(s, 3) for s in speedups])
+    for machine, row in zip(machines, speedups):
+        print("   plot", label, machine, systems, [round(s, 3) for s in row])
 
     fig, ax = plt.subplots(
         figsize=(fig_width, OPERATION_FIG_HEIGHT)
     )
 
-    x = np.arange(len(systems))
+    colors = [system_color(s, i) for i, s in enumerate(systems)]
 
-    # Each category gets one bar, so use most of the available slot.
-    bar_width = min(0.65, GROUP_WIDTH)
+    # Baseline (index 0) gets one narrow bar; others get n_machines bars.
+    x, slot, bar_w = layout_slots(systems, n_machines, total_width)
+    offsets, _ = machine_bar_offsets(n_machines, slot)
 
+    baseline_has_data = any(np.isfinite(row[0]) for row in speedups)
     bars = ax.bar(
-        x,
-        speedups,
-        width=bar_width,
-        color=[
-            system_color(s, i)
-            for i, s in enumerate(systems)
-        ],
+        x[0], 1.0 if baseline_has_data else np.nan,
+        width=bar_w, color=colors[0], linewidth=0,
     )
-
     add_value_labels(ax, bars)
+
+    for j, machine in enumerate(machines):
+        bars = draw_machine_bars(
+            ax, x[1:] + offsets[j], speedups[j][1:], bar_w, colors[1:], j,
+        )
+        add_value_labels(ax, bars)
 
     ax.set_yscale("log")
 
     configure_log_y_axis(
         ax,
-        speedups,
+        [s for row in speedups for s in row],
     )
 
     ax.axhline(
@@ -609,7 +733,18 @@ def plot_operation(operation, entries, out_dir, v=None):
         fontsize=10,
     )
 
-    ax.margins(x=0.04)
+    ax.margins(x=0.02)
+
+    # Machine pattern legend, top-left inside the axes.
+    ax.legend(
+        handles=machine_legend_handles(machines),
+        loc="upper left",
+        fontsize=6,
+        frameon=False,
+        ncol=n_machines,
+        handlelength=1.6,
+        columnspacing=0.8,
+    )
 
     fig.tight_layout()
 
@@ -633,9 +768,10 @@ def plot_operation(operation, entries, out_dir, v=None):
 # Load plot
 # ----------------------------------------------------------------------
 
-def plot_load(entries, out_dir, v=None):
+def plot_load(entries, out_dir, machines, v=None):
     """v=None: averaged over all |V| (file load.pdf).
     v=<value>: only that |V| (file load_<value>.pdf)."""
+    from matplotlib.patches import Patch
 
     if v is not None:
         entries = entries_for_v(entries, v)
@@ -686,11 +822,11 @@ def plot_load(entries, out_dir, v=None):
 
     n_groups = len(full_load_values)
     n_systems = len(systems)
-
+    n_machines = len(machines)
 
     fig_width = max(
         3.8,
-        LOAD_WIDTH_PER_GROUP * n_groups + 1.5,
+        LOAD_WIDTH_PER_GROUP * (n_machines / 3) * n_groups + 1.5,
     )
 
     fig, ax = plt.subplots(
@@ -699,78 +835,79 @@ def plot_load(entries, out_dir, v=None):
 
     x = np.arange(n_groups)
 
-    # Total width occupied by all bars in one group.
-    total_group_width = LOAD_GROUP_WIDTH
-
-    # Bars are packed tightly inside the group.
-    bar_width = total_group_width / n_systems
+    # Each group is split into one slot per system; each slot holds
+    # n_machines touching bars.
+    # The baseline gets one narrow slot with a single bar.
+    centers, slot_width, bar_w = layout_slots(
+        systems, n_machines, LOAD_GROUP_WIDTH,
+    )
+    m_offsets, _ = machine_bar_offsets(n_machines, slot_width)
 
     all_speedups = []
 
     for i, system in enumerate(systems):
+        color = system_color(system, i)
+        sys_offset = centers[i]
 
-        speedups = []
+        if system == BASELINE_SYSTEM:
+            speedups = [
+                1.0 if any(
+                    e["system"] == system and e["full_load"] == fl
+                    for e in subset
+                ) else np.nan
+                for fl in full_load_values
+            ]
+            all_speedups.extend(s for s in speedups if np.isfinite(s))
+            bars = ax.bar(
+                x + sys_offset, speedups, width=bar_w,
+                color=color, linewidth=0,
+            )
+            add_value_labels(ax, bars)
+            continue
 
-        for fl in full_load_values:
-            baseline_entry = get_baseline_entry(
-                subset,
-                fl,
+        for j, machine in enumerate(machines):
+            m_subset = [e for e in subset if e.get("machine") == machine]
+            speedups = []
+
+            for fl in full_load_values:
+                baseline_entry = get_baseline_entry(m_subset, fl)
+
+                if system == BASELINE_SYSTEM:
+                    has_data = any(
+                        e["system"] == system and e["full_load"] == fl
+                        for e in m_subset
+                    )
+                    speedups.append(1.0 if has_data else np.nan)
+                    continue
+
+                matches = [
+                    e
+                    for e in m_subset
+                    if e["system"] == system
+                    and e["full_load"] == fl
+                ]
+
+                if baseline_entry is not None and matches:
+                    speedups.append(
+                        compute_speedup(matches[0], baseline_entry)
+                    )
+                else:
+                    speedups.append(np.nan)
+
+            all_speedups.extend(
+                s for s in speedups if np.isfinite(s) and s > 0
             )
 
-            if system == BASELINE_SYSTEM:
-                has_data = any(
-                    e["system"] == system
-                    and e["full_load"] == fl
-                    for e in subset
-                )
+            bars = draw_machine_bars(
+                ax,
+                x + sys_offset + m_offsets[j],
+                speedups,
+                bar_w,
+                color,
+                j,
+            )
 
-                speedups.append(
-                    1.0 if has_data else np.nan
-                )
-
-                continue
-
-            matches = [
-                e
-                for e in subset
-                if e["system"] == system
-                and e["full_load"] == fl
-            ]
-
-            if (
-                baseline_entry is not None
-                and matches
-            ):
-                speedups.append(
-                    compute_speedup(matches[0], baseline_entry)
-                )
-            else:
-                speedups.append(np.nan)
-
-        all_speedups.extend(
-            v
-            for v in speedups
-            if np.isfinite(v)
-            and v > 0
-        )
-
-        # Center all system bars around the group center.
-        offset = (
-            i - (n_systems - 1) / 2
-        ) * bar_width
-
-        bars = ax.bar(
-            x + offset,
-            speedups,
-            width=bar_width * 0.92,
-            label=system,
-            color=system_color(system, i),
-        )
-
-        add_value_labels(
-            ax,
-            bars,
-        )
+            add_value_labels(ax, bars)
 
     ax.set_yscale("log")
 
@@ -805,24 +942,38 @@ def plot_load(entries, out_dir, v=None):
         fontsize=10,
     )
 
-    # Very small horizontal margins.
-    ax.margins(x=0.04)
+    ax.margins(x=0.02)
 
-    # Legend below the plot, centered.
-    ax.legend(
+    # Legend below the plot: library colors, then machine patterns.
+    system_handles = [
+        Patch(facecolor=system_color(s, i), label=s)
+        for i, s in enumerate(systems)
+    ]
+    leg1 = ax.legend(
+        handles=system_handles,
         loc="upper center",
         bbox_to_anchor=(0.5, -0.12),
         fontsize=7,
-        ncol=min(n_systems, 3),
+        ncol=min(n_systems, 4),
         frameon=False,
+    )
+    ax.add_artist(leg1)
+    ax.legend(
+        handles=machine_legend_handles(machines),
+        loc="upper left",
+        fontsize=6,
+        frameon=False,
+        ncol=n_machines,
+        handlelength=1.6,
+        columnspacing=0.8,
     )
 
     # Reserve space below the axes for the legend.
     fig.subplots_adjust(
         top=0.90,
-        bottom=0.28,
-        left=0.14,
-        right=0.98,
+        bottom=0.30,
+        left=0.08,
+        right=0.99,
     )
 
     filename = "load" + file_suffix(v)
@@ -845,32 +996,50 @@ def plot_load(entries, out_dir, v=None):
 # Main
 # ----------------------------------------------------------------------
 
+def parse_machine_arg(arg):
+    """'Name=path' or just 'path' -> (display name, Path)."""
+
+    if "=" in arg:
+        name, path = arg.split("=", 1)
+    else:
+        path = arg
+        name = Path(arg.rstrip("/\\")).name
+        if MACHINE_PREFIX_STRIP and name.startswith(MACHINE_PREFIX_STRIP):
+            name = name[len(MACHINE_PREFIX_STRIP):]
+    return MACHINE_LABELS.get(name, name), Path(path)
+
+
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print(
-            f"Usage: {sys.argv[0]} <folder_with_benchmark_jsons>"
+            f"Usage: {sys.argv[0]} <machine_folder> [<machine_folder> ...]\n"
+            f"       {sys.argv[0]} Name=<folder> Name=<folder> ...\n"
+            f"Example: {sys.argv[0]} results_thinkpad "
+            f"results/results_windows results/results_apple"
         )
         sys.exit(1)
 
-    folder = Path(sys.argv[1])
+    machines = []
+    entries = []
 
-    if not folder.is_dir():
-        print(f"Not a directory: {folder}")
-        sys.exit(1)
+    for arg in sys.argv[1:]:
+        name, folder = parse_machine_arg(arg)
 
-    json_paths = find_json_files(folder)
+        if not folder.is_dir():
+            print(f"Not a directory: {folder}")
+            sys.exit(1)
 
-    if not json_paths:
-        print(f"No .json files found in {folder}")
-        sys.exit(1)
+        json_paths = find_json_files(folder)
 
-    print(f"Reading {len(json_paths)} JSON file(s) from {folder}")
+        if not json_paths:
+            print(f"No .json files found in {folder} -- skipping {name}")
+            continue
 
-    OUTPUT_DIR.mkdir(
-        exist_ok=True
-    )
-
-    entries = load_entries(json_paths)
+        if USE_SYSTEM_NUMBERS:
+            name = f"System {len(machines) + 1}"
+        print(f"[{name}] reading {len(json_paths)} JSON file(s) from {folder}")
+        machines.append(name)
+        entries.extend(load_entries(json_paths, name))
 
     if not entries:
         print(
@@ -878,6 +1047,10 @@ def main():
             "check the JSON files and naming scheme."
         )
         sys.exit(1)
+
+    OUTPUT_DIR.mkdir(
+        exist_ok=True
+    )
 
     operations = sorted(
         {
@@ -890,6 +1063,7 @@ def main():
     print(
         f"Found {len(entries)} averaged entries "
         f"(from {sum(e['n_samples'] for e in entries)} runs), "
+        f"machines: {machines}, "
         f"operations: {operations}, "
         f"systems: "
         f"{sorted({e['system'] for e in entries})}"
@@ -907,6 +1081,7 @@ def main():
         plot_load(
             entries,
             OUTPUT_DIR,
+            machines,
             v=v,
         )
 
@@ -919,12 +1094,17 @@ def main():
                     if e["operation"] == operation
                 ],
                 OUTPUT_DIR,
+                machines,
                 v=v,
             )
 
     for op in ("Subdivision", "Collapse"):
-        print(op, sorted({(e["system"], e["full_load"]) for e in entries if e["operation"] == op}))
+        print(op, sorted({(e["machine"], e["system"], e["full_load"]) for e in entries if e["operation"] == op}))
 
 
 if __name__ == "__main__":
     main()
+    
+    
+    
+    

@@ -4,7 +4,7 @@ set -e
 
 # Plot
 source venv/bin/activate
-python scripts/_plot_benchmarks.py results/
+python scripts/_plot_benchmarks_sum.py results/
 # python scripts/_plot_benchmarks.py build_Release/results.json
 
 

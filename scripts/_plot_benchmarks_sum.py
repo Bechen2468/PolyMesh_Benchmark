@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""
-Generate speedup-relative benchmark plots from Google Benchmark JSON output.
-
-Usage:
-    python plot_benchmarks.py results.json [more.json ...]
-
-Re-running after adding a new matrix type or more benchmark runs needs no
-code changes -- benchmark names are parsed automatically as long as they
-follow "<System>/<Version>/<Operation>/<args...>".
-"""
-
 import json
 import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -32,8 +22,8 @@ SYSTEM_LABELS = {
     "OpenMesh____": "OpenMesh",
     "SurfaceMesh_": "SurfaceMesh",
     "Libigl______": "Libigl",
-    "D_Ragged____": "PM-Reuse-Ragged",
-    "Apd_Ragged__": "PM-Append-Ragged",
+    "D_Ragged____": "PM-Reuse",
+    "Apd_Ragged__": "PM-Append",
     "VecVec______": "PM-VecVec",
     "Vec_Eigen___": "PM-VecEigen",
     "Apd_Ragged_V": "PM-Validate",
@@ -65,8 +55,8 @@ SYSTEM_COLORS = {
     "OpenMesh":         "#595959",   # neutral baseline
     "SurfaceMesh":      "#2a78d6",   # blue
     "Libigl":           "#eb6834",   # orange
-    "PM-Reuse-Ragged":  "#1baf7a",   # aqua
-    "PM-Append-Ragged": "#eda100",   # yellow
+    "PM-Reuse":         "#1baf7a",   # aqua
+    "PM-Append":        "#eda100",   # yellow
     "PM-VecVec":        "#e87ba4",   # magenta
     "PM-VecEigen":      "#008300",   # green
     "PM-Validate":      "#6250d6",   # violet
@@ -140,24 +130,64 @@ NAME_RE = re.compile(
 
 FULL_LOAD_RE = re.compile(r"Full_Load:(\d+)")
 
+# Matches the "|V|:<value>/" segment so it can be stripped from the name.
+# Benchmarks that differ only in |V| then share the same key and get averaged.
+V_SEGMENT_RE = re.compile(r"\|V\|:[^/]*/?")
+V_VALUE_RE = re.compile(r"\|V\|:([^/]+)")
+
+# How the per-|V| ratios are combined into one bar value.
+# Every |V| gets the same weight either way.
+#   "geometric"  -- geometric mean (standard for ratios / speedups)
+#   "arithmetic" -- plain mean of the ratios
+RATIO_MEAN = "geometric"
+
+# Google Benchmark time units -> nanoseconds, so averaging is unit-safe.
+TIME_UNIT_TO_NS = {
+    "ns": 1.0,
+    "us": 1e3,
+    "ms": 1e6,
+    "s": 1e9,
+}
+
 
 def clean_system_label(raw: str) -> str:
     return SYSTEM_LABELS.get(raw, raw.rstrip("_"))
 
 
+def find_json_files(folder: Path):
+    return sorted(p for p in folder.rglob("*.json") if p.is_file())
+
+
 def load_entries(json_paths):
-    """Yield {system, operation, full_load, time} for every individual
-    (non-aggregate) benchmark entry across all given JSON files."""
+    """Return one {system, operation, full_load, times_by_v} entry per
+    benchmark name with the |V| segment removed.
+
+    times_by_v maps each |V| value to the mean time of that exact benchmark
+    over all JSON files. The |V| values are kept apart here so that each
+    mesh size can later be compared to the baseline at the same size and
+    then weighted equally (see compute_speedup).
+
+    Aggregate entries (mean/median/stddev) are skipped; only individual
+    runs are averaged. Times are normalized to nanoseconds.
+    """
+
+    times = defaultdict(lambda: defaultdict(list))
+    meta = {}
 
     for path in json_paths:
-        with open(path) as f:
-            data = json.load(f)
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"  [warn] could not read {path}: {exc}")
+            continue
 
         for b in data.get("benchmarks", []):
             if b.get("run_type") == "aggregate":
                 continue
 
-            m = NAME_RE.match(b.get("name", ""))
+            name = b.get("name", "")
+            m = NAME_RE.match(name)
             if not m:
                 continue
 
@@ -165,12 +195,81 @@ def load_entries(json_paths):
             if not fl_m:
                 continue
 
-            yield {
-                "system": clean_system_label(m.group("system")),
-                "operation": m.group("operation"),
-                "full_load": int(fl_m.group(1)),
-                "time": b["real_time"],
-            }
+            if "real_time" not in b:
+                continue
+
+            scale = TIME_UNIT_TO_NS.get(b.get("time_unit", "ns"), 1.0)
+
+            key = V_SEGMENT_RE.sub("", name)
+            v_m = V_VALUE_RE.search(name)
+            v = v_m.group(1) if v_m else ""
+            times[key][v].append(b["real_time"] * scale)
+
+            if key not in meta:
+                meta[key] = {
+                    "system": clean_system_label(m.group("system")),
+                    "operation": m.group("operation"),
+                    "full_load": int(fl_m.group(1)),
+                }
+
+    entries = []
+    for key, by_v in times.items():
+        entry = dict(meta[key])
+        entry["times_by_v"] = {
+            v: float(np.mean(vals)) for v, vals in by_v.items()
+        }
+        entry["n_samples"] = sum(len(vals) for vals in by_v.values())
+        entries.append(entry)
+
+    return entries
+
+
+def compute_speedup(entry, baseline_entry):
+    """Time ratio entry / baseline, with every |V| weighted equally.
+
+    For each |V| present in both entries the ratio is computed at that
+    mesh size; the ratios are then combined with RATIO_MEAN. Sizes that
+    only one of the two has are ignored (and reported once).
+    """
+
+    if entry is None or baseline_entry is None:
+        return np.nan
+
+    a = entry["times_by_v"]
+    b = baseline_entry["times_by_v"]
+    common = sorted(set(a) & set(b))
+
+    missing = set(a) ^ set(b)
+    if missing:
+        warn_key = (
+            entry["system"], entry["operation"], entry["full_load"],
+            baseline_entry["full_load"],
+        )
+        if warn_key not in _warned_missing_v:
+            _warned_missing_v.add(warn_key)
+            print(
+                f"  [warn] {entry['system']} / {entry['operation']} "
+                f"(Full_Load {entry['full_load']}): |V| values "
+                f"{sorted(missing)} not present for both it and the "
+                f"baseline -- ignored"
+            )
+
+    ratios = [
+        a[v] / b[v]
+        for v in common
+        if b[v] > 0 and a[v] > 0
+    ]
+
+    if not ratios:
+        return np.nan
+
+    if RATIO_MEAN == "arithmetic":
+        return float(np.mean(ratios))
+
+    return float(np.exp(np.mean(np.log(ratios))))
+
+
+_warned_missing_v = set()
 
 
 # ----------------------------------------------------------------------
@@ -212,8 +311,8 @@ def system_color(system, idx):
     )
 
 
-def get_baseline_time(entries, full_load):
-    """Baseline time for the given Full_Load value.
+def get_baseline_entry(entries, full_load):
+    """Baseline entry for the given Full_Load value.
 
     Falls back to whichever single value the baseline system actually has.
     """
@@ -229,9 +328,9 @@ def get_baseline_time(entries, full_load):
     ]
 
     if exact:
-        return exact[0]["time"]
+        return exact[0]
 
-    return candidates[0]["time"] if candidates else None
+    return candidates[0] if candidates else None
 
 
 def configure_log_y_axis(ax, values):
@@ -342,24 +441,73 @@ def save_all_formats(fig, out_dir, filename_stem):
     )
 
 
+def all_v_values(entries):
+    """Every |V| value in the data, sorted numerically where possible."""
+
+    values = {v for e in entries for v in e["times_by_v"] if v != ""}
+
+    def key(v):
+        try:
+            return (0, float(v))
+        except ValueError:
+            return (1, v)
+
+    return sorted(values, key=key)
+
+
+def entries_for_v(entries, v):
+    """Copy of the entries restricted to a single |V| value.
+
+    Entries that have no run for this |V| are dropped.
+    """
+
+    out = []
+    for e in entries:
+        if v in e["times_by_v"]:
+            e2 = dict(e)
+            e2["times_by_v"] = {v: e["times_by_v"][v]}
+            out.append(e2)
+    return out
+
+
+def title_suffix(v):
+    # Mathtext, because the serif font has no "|" glyph.
+    return "" if v is None else rf" ($|V|$ = {v})"
+
+
+def file_suffix(v):
+    if v is None:
+        return ""
+    safe = re.sub(r"[^A-Za-z0-9.\-]+", "-", str(v))
+    return f"_{safe}"
+
+
 # ----------------------------------------------------------------------
 # Operation plots
 # ----------------------------------------------------------------------
 
-def plot_operation(operation, entries, out_dir):
+def plot_operation(operation, entries, out_dir, v=None):
+    """v=None: averaged over all |V| (file <operation>.pdf).
+    v=<value>: only that |V| (file <operation>_<value>.pdf)."""
+
+    if v is not None:
+        entries = entries_for_v(entries, v)
+
+    label = operation + ("" if v is None else f" |V|={v}")
+
     subset = [
         e
         for e in entries
         if e["full_load"] in REPRESENTATIVE_FULL_LOAD
     ]
 
-    baseline_time = get_baseline_time(
+    baseline_entry = get_baseline_entry(
         subset,
         REPRESENTATIVE_FULL_LOAD[0],
     )
 
-    if baseline_time is None:
-        print(f"  [skip] {operation}: no baseline entry found")
+    if baseline_entry is None:
+        print(f"  [skip] {label}: no baseline entry found")
         return
 
     other_systems = order_systems(
@@ -374,7 +522,7 @@ def plot_operation(operation, entries, out_dir):
 
     if not other_systems:
         print(
-            f"  [skip] {operation}: "
+            f"  [skip] {label}: "
             f"no non-baseline entries found"
         )
         return
@@ -390,7 +538,7 @@ def plot_operation(operation, entries, out_dir):
 
         if matches:
             speedups.append(
-                matches[0]["time"] / baseline_time
+                compute_speedup(matches[0], baseline_entry)
             )
         else:
             speedups.append(np.nan)
@@ -410,7 +558,7 @@ def plot_operation(operation, entries, out_dir):
     )
 
     # DEBUG
-    print("   plot", operation, systems, [round(s, 3) for s in speedups])
+    print("   plot", label, systems, [round(s, 3) for s in speedups])
 
     fig, ax = plt.subplots(
         figsize=(fig_width, OPERATION_FIG_HEIGHT)
@@ -457,7 +605,7 @@ def plot_operation(operation, entries, out_dir):
     )
 
     ax.set_title(
-        operation,
+        operation + title_suffix(v),
         fontsize=10,
     )
 
@@ -465,7 +613,7 @@ def plot_operation(operation, entries, out_dir):
 
     fig.tight_layout()
 
-    filename = operation.lower()
+    filename = operation.lower() + file_suffix(v)
 
     save_all_formats(
         fig,
@@ -476,7 +624,7 @@ def plot_operation(operation, entries, out_dir):
     plt.close(fig)
 
     print(
-        f"  [ok]   {operation} -> "
+        f"  [ok]   {label} -> "
         f"{out_dir / (filename + '.pdf')}"
     )
 
@@ -485,7 +633,15 @@ def plot_operation(operation, entries, out_dir):
 # Load plot
 # ----------------------------------------------------------------------
 
-def plot_load(entries, out_dir):
+def plot_load(entries, out_dir, v=None):
+    """v=None: averaged over all |V| (file load.pdf).
+    v=<value>: only that |V| (file load_<value>.pdf)."""
+
+    if v is not None:
+        entries = entries_for_v(entries, v)
+
+    label = "Load" + ("" if v is None else f" |V|={v}")
+
     subset = [
         e
         for e in entries
@@ -493,7 +649,7 @@ def plot_load(entries, out_dir):
     ]
 
     if not subset:
-        print("  [skip] Load: no entries found")
+        print(f"  [skip] {label}: no entries found")
         return
 
     FULL_LOAD_ORDER = list(FULL_LOAD_LABELS.keys())
@@ -523,7 +679,7 @@ def plot_load(entries, out_dir):
 
     if not other_systems:
         print(
-            "  [skip] Load: "
+            f"  [skip] {label}: "
             "no non-baseline entries found"
         )
         return
@@ -556,7 +712,7 @@ def plot_load(entries, out_dir):
         speedups = []
 
         for fl in full_load_values:
-            baseline_time = get_baseline_time(
+            baseline_entry = get_baseline_entry(
                 subset,
                 fl,
             )
@@ -582,11 +738,11 @@ def plot_load(entries, out_dir):
             ]
 
             if (
-                baseline_time is not None
+                baseline_entry is not None
                 and matches
             ):
                 speedups.append(
-                    matches[0]["time"] /baseline_time
+                    compute_speedup(matches[0], baseline_entry)
                 )
             else:
                 speedups.append(np.nan)
@@ -645,7 +801,7 @@ def plot_load(entries, out_dir):
     )
 
     ax.set_title(
-        "Load",
+        "Load" + title_suffix(v),
         fontsize=10,
     )
 
@@ -669,17 +825,19 @@ def plot_load(entries, out_dir):
         right=0.98,
     )
 
+    filename = "load" + file_suffix(v)
+
     save_all_formats(
         fig,
         out_dir,
-        "load",
+        filename,
     )
 
     plt.close(fig)
 
     print(
-        f"  [ok]   Load -> "
-        f"{out_dir / 'load.pdf'}"
+        f"  [ok]   {label} -> "
+        f"{out_dir / (filename + '.pdf')}"
     )
 
 
@@ -688,20 +846,31 @@ def plot_load(entries, out_dir):
 # ----------------------------------------------------------------------
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         print(
-            f"Usage: {sys.argv[0]} "
-            "<benchmark_results.json> [more.json ...]"
+            f"Usage: {sys.argv[0]} <folder_with_benchmark_jsons>"
         )
         sys.exit(1)
+
+    folder = Path(sys.argv[1])
+
+    if not folder.is_dir():
+        print(f"Not a directory: {folder}")
+        sys.exit(1)
+
+    json_paths = find_json_files(folder)
+
+    if not json_paths:
+        print(f"No .json files found in {folder}")
+        sys.exit(1)
+
+    print(f"Reading {len(json_paths)} JSON file(s) from {folder}")
 
     OUTPUT_DIR.mkdir(
         exist_ok=True
     )
 
-    entries = list(
-        load_entries(sys.argv[1:])
-    )
+    entries = load_entries(json_paths)
 
     if not entries:
         print(
@@ -719,33 +888,43 @@ def main():
     )
 
     print(
-        f"Found {len(entries)} entries, "
+        f"Found {len(entries)} averaged entries "
+        f"(from {sum(e['n_samples'] for e in entries)} runs), "
         f"operations: {operations}, "
         f"systems: "
         f"{sorted({e['system'] for e in entries})}"
     )
 
-    plot_load(
-        entries,
-        OUTPUT_DIR,
-    )
+    v_values = all_v_values(entries)
+    print(f"|V| values: {v_values}")
 
-    for operation in operations:
-        plot_operation(
-            operation,
-            [
-                e
-                for e in entries
-                if e["operation"] == operation
-            ],
+    # None = averaged over all |V| (plain filenames),
+    # then one set of plots per individual |V| (filenames with _<|V|>).
+    for v in [None] + v_values:
+        if v is not None:
+            print(f"\n--- |V| = {v} ---")
+
+        plot_load(
+            entries,
             OUTPUT_DIR,
+            v=v,
         )
-    
+
+        for operation in operations:
+            plot_operation(
+                operation,
+                [
+                    e
+                    for e in entries
+                    if e["operation"] == operation
+                ],
+                OUTPUT_DIR,
+                v=v,
+            )
+
     for op in ("Subdivision", "Collapse"):
         print(op, sorted({(e["system"], e["full_load"]) for e in entries if e["operation"] == op}))
 
 
 if __name__ == "__main__":
     main()
-    
-    
