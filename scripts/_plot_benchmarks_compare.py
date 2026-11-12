@@ -77,13 +77,13 @@ MACHINE_PREFIX_STRIP = "results_"
 # True: label machines "System 1", "System 2", ... in command-line order
 # (the mapping folder -> number is printed when the script runs).
 # False: use the names below / Name=path.
-USE_SYSTEM_NUMBERS = True
+USE_SYSTEM_NUMBERS = False
 
 # Optional nicer display names for machines (key = derived/explicit name).
 MACHINE_LABELS = {
     "thinkpad": "ThinkPad",
-    "windows": "Windows",
-    "apple": "Apple",
+    "windows": "Windows-PC",
+    "apple": "MacBook",
 }
 
 # Bar style per machine, in command-line order. Same library color,
