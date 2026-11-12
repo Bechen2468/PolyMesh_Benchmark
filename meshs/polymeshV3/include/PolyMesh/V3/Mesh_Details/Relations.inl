@@ -163,7 +163,7 @@ void PM::_EF_build() {
     }
     // no compact needed: we precalculated the acctual sizes
 
-    ef.compact({}, _COMPACT_ADD_RESERVE);
+    //ef.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
@@ -333,7 +333,7 @@ void PM::_VV_HE_build() {
         _VV_HE_add_face(f, f.idx());
     }
 
-    _relations.VV_HE.compact({}, _COMPACT_ADD_RESERVE);
+    //_relations.VV_HE.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
@@ -448,7 +448,7 @@ void PM::_VF_build() {
         _VF_add_face(f, f.idx());
     }
 
-    _relations.VF.compact({}, _COMPACT_ADD_RESERVE);
+    //_relations.VF.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
