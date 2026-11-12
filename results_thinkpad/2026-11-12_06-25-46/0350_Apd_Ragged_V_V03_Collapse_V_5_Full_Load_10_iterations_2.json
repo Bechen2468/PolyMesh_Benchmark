@@ -1,11 +1,19 @@
 {
   "context": {
+<<<<<<<< HEAD:results_thinkpad/2026-11-12_06-25-46/0350_Apd_Ragged_V_V03_Collapse_V_5_Full_Load_10_iterations_2.json
     "date": "2026-11-12T06:41:38+01:00",
     "host_name": "05023-3",
     "executable": "./benchmark/PolyMesh_Benchmark",
     "num_cpus": 8,
     "mhz_per_cpu": 3899,
     "cpu_scaling_enabled": false,
+========
+    "date": "2026-11-12T06:47:15+01:00",
+    "host_name": "DESKTOP-RM9NHCP",
+    "executable": "C:\\Users\\leon4\\Documents\\Repositorys\\Bechen2468\\PolyMesh_Benchmark\\build_Release\\benchmark\\Release\\PolyMesh_Benchmark.exe",
+    "num_cpus": 16,
+    "mhz_per_cpu": 3394,
+>>>>>>>> 088bd0d1d29748fc3445df526245b85a50f05235:results/results_windows/2026-11-12_06-25-05/0350_Apd_Ragged_V_V03_Collapse_V_5_Full_Load_10_iterations_2.json
     "caches": [
       {
         "type": "Data",
@@ -46,8 +54,13 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 2,
+<<<<<<<< HEAD:results_thinkpad/2026-11-12_06-25-46/0350_Apd_Ragged_V_V03_Collapse_V_5_Full_Load_10_iterations_2.json
       "real_time": 3.9599298610000913e+06,
       "cpu_time": 3.9596349429999990e+06,
+========
+      "real_time": 2.2137491499997852e+06,
+      "cpu_time": 2.2187500000000000e+06,
+>>>>>>>> 088bd0d1d29748fc3445df526245b85a50f05235:results/results_windows/2026-11-12_06-25-05/0350_Apd_Ragged_V_V03_Collapse_V_5_Full_Load_10_iterations_2.json
       "time_unit": "us",
       "mb_post_run": 6.9000000000000000e+02,
       "mb_pre_run": 5.5200000000000000e+02
