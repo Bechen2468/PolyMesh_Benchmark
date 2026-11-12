@@ -1,6 +1,6 @@
 {
   "context": {
-    "date": "2026-11-06T17:10:04+01:00",
+    "date": "2026-11-09T11:31:50+01:00",
     "host_name": "DESKTOP-RM9NHCP",
     "executable": "C:\\Users\\leon4\\Documents\\Repositorys\\Bechen2468\\PolyMesh_Benchmark\\build_Release\\benchmark\\Release\\PolyMesh_Benchmark.exe",
     "num_cpus": 16,
@@ -36,17 +36,17 @@
   },
   "benchmarks": [
     {
-      "name": "Apd_Ragged_V/V03/Collapse/|V|:1/Full_Load:10/iterations:4",
+      "name": "Apd_Ragged_V/V03/Subdivision/|V|:2/Full_Load:10/iterations:1",
       "family_index": 0,
       "per_family_instance_index": 0,
-      "run_name": "Apd_Ragged_V/V03/Collapse/|V|:1/Full_Load:10/iterations:4",
+      "run_name": "Apd_Ragged_V/V03/Subdivision/|V|:2/Full_Load:10/iterations:1",
       "run_type": "iteration",
       "repetitions": 1,
       "repetition_index": 0,
       "threads": 1,
-      "iterations": 4,
-      "real_time": 3.6937575001502410e+04,
-      "cpu_time": 3.5156250000000000e+04,
+      "iterations": 1,
+      "real_time": 1.2479232999999113e+06,
+      "cpu_time": 1.2500000000000000e+06,
       "time_unit": "us",
       "mb_post_run": 0.0000000000000000e+00,
       "mb_pre_run": 0.0000000000000000e+00

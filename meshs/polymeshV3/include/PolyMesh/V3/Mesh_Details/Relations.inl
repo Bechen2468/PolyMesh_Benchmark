@@ -9,7 +9,7 @@
 
 namespace PolyMesh::V3 {
 
-#define _COMPACT_RESERVE false
+#define _COMPACT_ADD_RESERVE false
 
 
 PM_T
@@ -97,7 +97,7 @@ void PM::_EF_build() {
 //        _EF_add_face(f, f.idx());
 //    }
 //
-//    ef.compact({}, _COMPACT_RESERVE);
+//    ef.compact({}, _COMPACT_ADD_RESERVE);
 
 
     // Because 2 edges form one entry for EF, its acctual size is not as easy predictable as the other Matrices
@@ -162,6 +162,8 @@ void PM::_EF_build() {
         _EF_add_face(f, f.idx());
     }
     // no compact needed: we precalculated the acctual sizes
+
+    ef.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
@@ -307,7 +309,7 @@ void PM::_VV_HE_build() {
 //        _VV_HE_add_face(f, f.idx());
 //    }
 //
-//    vv_he.compact({}, _COMPACT_RESERVE);
+//    vv_he.compact({}, _COMPACT_ADD_RESERVE);
 
 
 
@@ -330,6 +332,8 @@ void PM::_VV_HE_build() {
     for(auto f : _f) {
         _VV_HE_add_face(f, f.idx());
     }
+
+    vv_he.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
@@ -443,6 +447,8 @@ void PM::_VF_build() {
     for(auto f : _f) {
         _VF_add_face(f, f.idx());
     }
+
+    vf.compact({}, _COMPACT_ADD_RESERVE);
 }
 
 
