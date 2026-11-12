@@ -1,0 +1,50 @@
+{
+  "context": {
+    "date": "2026-11-09T14:45:36+01:00",
+    "host_name": "eduroam-141-23-181-218.wlan.tu-berlin.de",
+    "executable": "./benchmark/PolyMesh_Benchmark",
+    "num_cpus": 15,
+    "mhz_per_cpu": 24,
+    "cpu_scaling_enabled": false,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 65536,
+        "num_sharing": 0
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 131072,
+        "num_sharing": 0
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 8388608,
+        "num_sharing": 1
+      }
+    ],
+    "load_avg": [1.60352,1.71631,1.92725],
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "SurfaceMesh_/V03/Render_Export/|V|:2/Full_Load:1/iterations:4",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "SurfaceMesh_/V03/Render_Export/|V|:2/Full_Load:1/iterations:4",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 4,
+      "real_time": 7.5702292501773627e+03,
+      "cpu_time": 7.5592500000000173e+03,
+      "time_unit": "us",
+      "mb_post_run": 0.0000000000000000e+00,
+      "mb_pre_run": 0.0000000000000000e+00
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "context": {
+    "date": "2026-11-09T14:31:05+01:00",
+    "host_name": "eduroam-141-23-181-218.wlan.tu-berlin.de",
+    "executable": "./benchmark/PolyMesh_Benchmark",
+    "num_cpus": 15,
+    "mhz_per_cpu": 24,
+    "cpu_scaling_enabled": false,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 65536,
+        "num_sharing": 0
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 131072,
+        "num_sharing": 0
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 8388608,
+        "num_sharing": 1
+      }
+    ],
+    "load_avg": [3.10889,3.42041,2.55322],
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "Libigl______/V25/Load/|V|:5/Full_Load:0/iterations:4",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "Libigl______/V25/Load/|V|:5/Full_Load:0/iterations:4",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 4,
+      "real_time": 1.0200510725003369e+06,
+      "cpu_time": 1.0191685000000003e+06,
+      "time_unit": "us",
+      "mb_post_run": 0.0000000000000000e+00,
+      "mb_pre_run": 0.0000000000000000e+00
+    }
+  ]
+}
