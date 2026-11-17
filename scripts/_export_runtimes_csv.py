@@ -44,7 +44,7 @@ SHORT_NAMES = {
     "PM-Reuse": "pm-reuse",
     "PM-Append": "pm-append",
     "PM-VecVec": "pm-vecvec",
-    "PM-VecEigen": "pm-veceigen",
+    "PM-EigenCSR": "pm-veceigen",
     "PM-Validate": "pm-validate",
 }
 

@@ -25,7 +25,7 @@ SYSTEM_LABELS = {
     "D_Ragged____": "PM-Reuse",
     "Apd_Ragged__": "PM-Append",
     "VecVec______": "PM-VecVec",
-    "Vec_Eigen___": "PM-VecEigen",
+    "Vec_Eigen___": "PM-EigenCSR",
     "Apd_Ragged_V": "PM-Validate",
 }
 SYSTEM_ORDER = list(SYSTEM_LABELS.values())
@@ -48,7 +48,7 @@ FULL_LOAD_LABELS = {
 #     "PM-Reuse-Ragged": "#9d2c00",
 #     "PM-Append-Ragged": "#0b81a2",
 #     "PM-VecVec": "#e25759",
-#     "PM-VecEigen": "#7E4794",
+#     "PM-EigenCSR": "#7E4794",
 #     "PM-Validate": "#36b700",
 # }
 SYSTEM_COLORS = {
@@ -58,7 +58,7 @@ SYSTEM_COLORS = {
     "PM-Reuse":         "#1baf7a",   # aqua
     "PM-Append":        "#eda100",   # yellow
     "PM-VecVec":        "#e87ba4",   # magenta
-    "PM-VecEigen":      "#008300",   # green
+    "PM-EigenCSR":      "#008300",   # green
     "PM-Validate":      "#6250d6",   # violet
 }
 
